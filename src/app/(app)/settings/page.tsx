@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Tag, Download, Upload, ChevronRight } from "lucide-react";
+import { Download, Upload, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,6 @@ import { getHouseholdMembers } from "./household-actions";
 import type { UserSettings } from "@/lib/types";
 
 const items = [
-  {
-    href: "/categories",
-    icon: Tag,
-    title: "Categorías",
-    description: "Crea, edita y elimina las categorías de tus gastos.",
-  },
   {
     href: "/export",
     icon: Download,
@@ -44,7 +38,7 @@ export default async function SettingsPage() {
     <FadeIn className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Ajustes</h1>
-        <p className="text-muted-foreground">Gestión de categorías, presupuestos y datos.</p>
+        <p className="text-muted-foreground">Ingresos, moneda, compartir y datos.</p>
       </div>
 
       <Card>
