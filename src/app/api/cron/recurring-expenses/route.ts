@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
       amount: item.amount,
       description: item.description,
       expense_date: expenseDate,
+      recurring_expense_id: item.id,
     });
 
     if (!insertError) {

@@ -1,0 +1,153 @@
+import { Repeat, Plus } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { detectSubscriptions } from "@/lib/subscriptions";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { RecurringForm } from "./recurring-form";
+import { RecurringRowActions } from "./recurring-row-actions";
+import { AddSuggestedButton } from "./add-suggested-button";
+import type { Category, RecurringExpense } from "@/lib/types";
+
+const currency = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
+
+export async function FijosTab() {
+  const supabase = await createClient();
+
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
+  twelveMonthsAgo.setDate(1);
+
+  const [{ data: recurring }, { data: categories }, { data: recentExpenses }] =
+    await Promise.all([
+      supabase
+        .from("recurring_expenses")
+        .select("*, category:categories(id, name, color)")
+        .order("day_of_month"),
+      supabase.from("categories").select("*").order("name"),
+      supabase
+        .from("expenses")
+        .select("amount, description, expense_date, category:categories(name, color)")
+        .is("recurring_expense_id", null)
+        .gte("expense_date", twelveMonthsAgo.toISOString().slice(0, 10)),
+    ]);
+
+  const recurringList = (recurring ?? []) as unknown as (RecurringExpense & {
+    category: Pick<Category, "id" | "name" | "color"> | null;
+  })[];
+  const categoryList = (categories ?? []) as Category[];
+
+  const existingDescriptions = new Set(
+    recurringList.map((r) => r.description.trim().toLowerCase()),
+  );
+  const suggestions = detectSubscriptions(
+    (recentExpenses ?? []) as unknown as Parameters<typeof detectSubscriptions>[0],
+  ).filter((s) => !existingDescriptions.has(s.key));
+
+  const totalMonthly = recurringList
+    .filter((r) => r.active)
+    .reduce((sum, r) => sum + Number(r.amount), 0);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardContent className="py-4">
+          <p className="text-sm text-muted-foreground">Total fijo mensual</p>
+          <p className="text-2xl font-semibold">{currency.format(totalMonthly)}</p>
+        </CardContent>
+      </Card>
+
+      <RecurringForm categories={categoryList} />
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Descripción</TableHead>
+              <TableHead>Categoría</TableHead>
+              <TableHead>Día</TableHead>
+              <TableHead className="text-right">Importe</TableHead>
+              <TableHead className="w-0" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {recurringList.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                  No tienes gastos fijos configurados.
+                </TableCell>
+              </TableRow>
+            )}
+            {recurringList.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-medium">{item.description}</TableCell>
+                <TableCell>
+                  {item.category ? (
+                    <Badge
+                      variant="outline"
+                      style={{ backgroundColor: `${item.category.color}20`, color: item.category.color }}
+                    >
+                      {item.category.name}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell>Día {item.day_of_month}</TableCell>
+                <TableCell className="text-right font-medium">
+                  {currency.format(item.amount)}
+                </TableCell>
+                <TableCell>
+                  <RecurringRowActions id={item.id} active={item.active} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {suggestions.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm font-medium text-muted-foreground">
+            Hemos detectado estos posibles gastos fijos en tu historial
+          </p>
+          {suggestions.map((s) => (
+            <Card key={s.key}>
+              <CardContent className="flex items-center justify-between gap-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-8 items-center justify-center rounded-full bg-muted">
+                    <Repeat className="size-3.5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-medium capitalize">{s.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {s.occurrences} cargos · ~{currency.format(s.averageAmount)}/mes
+                    </p>
+                  </div>
+                </div>
+                <AddSuggestedButton
+                  description={s.description}
+                  amount={s.averageAmount}
+                  categoryName={s.categoryName}
+                  categories={categoryList}
+                  trigger={
+                    <span className="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                      <Plus className="size-3.5" /> Añadir como fijo
+                    </span>
+                  }
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -29,6 +29,25 @@ export type Budget = {
   created_at: string;
 };
 
+export type Income = {
+  id: string;
+  user_id: string;
+  amount: number;
+  description: string | null;
+  income_date: string;
+  created_at: string;
+};
+
+export type SavingsGoal = {
+  id: string;
+  user_id: string;
+  name: string;
+  target_amount: number;
+  target_date: string | null;
+  active: boolean;
+  created_at: string;
+};
+
 export type RecurringExpense = {
   id: string;
   user_id: string;

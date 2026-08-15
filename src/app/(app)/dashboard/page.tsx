@@ -1,6 +1,8 @@
-import { AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSpendByCategoryThisMonth } from "@/lib/spend";
+import { getMonthlyNetSavings, getNetSavingsSince } from "@/lib/net-savings";
 import {
   Card,
   CardContent,
@@ -9,8 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FadeIn, AnimatedCurrency } from "@/components/motion";
 import { CategoryPieChart, MonthlyBarChart } from "./expense-charts";
-import type { Budget, Category, Expense } from "@/lib/types";
+import type { Budget, Category, Expense, SavingsGoal } from "@/lib/types";
 
 const currency = new Intl.NumberFormat("es-ES", {
   style: "currency",
@@ -76,9 +79,17 @@ export default async function DashboardPage() {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, total]) => ({ month: monthLabel(key), total }));
 
-  const [{ data: budgets }, spend] = await Promise.all([
+  const [{ data: budgets }, spend, netSavings, { data: goal }] = await Promise.all([
     supabase.from("budgets").select("*, category:categories(id, name, color)"),
     getSpendByCategoryThisMonth(supabase),
+    getMonthlyNetSavings(supabase, 1),
+    supabase
+      .from("savings_goals")
+      .select("*")
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
   const budgetList = (budgets ?? []) as unknown as (Budget & {
     category: Pick<Category, "id" | "name" | "color">;
@@ -86,14 +97,23 @@ export default async function DashboardPage() {
   const overBudget = budgetList.filter(
     (b) => (spend.get(b.category_id) ?? 0) > b.monthly_limit,
   );
+  const savingsThisMonth = netSavings[netSavings.length - 1]?.net ?? 0;
+
+  const goalData = goal as SavingsGoal | null;
+  const goalSaved = goalData
+    ? await getNetSavingsSince(supabase, goalData.created_at.slice(0, 10))
+    : 0;
+  const goalPercent = goalData
+    ? Math.max(0, Math.min(100, (goalSaved / goalData.target_amount) * 100))
+    : 0;
 
   return (
-    <div className="flex flex-col gap-6">
+    <FadeIn className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">
-          Hola{user?.email ? `, ${user.email}` : ""}
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Hola{user?.email ? `, ${user.email.split("@")[0]}` : ""}
         </h1>
-        <p className="text-muted-foreground">Resumen de tus gastos</p>
+        <p className="text-muted-foreground">Así va tu mes.</p>
       </div>
 
       {overBudget.length > 0 && (
@@ -111,25 +131,66 @@ export default async function DashboardPage() {
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardDescription>Gastado este mes</CardDescription>
-          <CardTitle className="text-3xl">
-            {currency.format(totalThisMonth)}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {thisMonthRows.length} movimiento{thisMonthRows.length === 1 ? "" : "s"}{" "}
-            registrado{thisMonthRows.length === 1 ? "" : "s"}
-          </p>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link href="/expenses">
+          <Card className="h-full transition-shadow hover:shadow-md">
+            <CardHeader>
+              <CardDescription>Gastado este mes</CardDescription>
+              <AnimatedCurrency value={totalThisMonth} className="text-3xl font-semibold" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                {thisMonthRows.length} movimiento{thisMonthRows.length === 1 ? "" : "s"}{" "}
+                registrado{thisMonthRows.length === 1 ? "" : "s"}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/savings">
+          <Card className="h-full border-primary/30 bg-accent/40 transition-shadow hover:shadow-md">
+            <CardHeader>
+              <CardDescription>Ahorro neto este mes</CardDescription>
+              <AnimatedCurrency value={savingsThisMonth} className="text-3xl font-semibold" />
+            </CardHeader>
+            <CardContent>
+              <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                Ver ingresos y gastos <ArrowRight className="size-3" />
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <CategoryPieChart data={Array.from(byCategory.values())} />
         <MonthlyBarChart data={monthlyData} />
       </div>
-    </div>
+
+      <Link href="/goal">
+        <Card className="transition-shadow hover:shadow-md">
+          <CardHeader>
+            <CardTitle className="text-base">
+              {goalData ? goalData.name : "Sin objetivo de ahorro todavía"}
+            </CardTitle>
+            <CardDescription>
+              {goalData
+                ? `${currency.format(goalSaved)} de ${currency.format(goalData.target_amount)}`
+                : "Crea uno y sigue tu progreso automáticamente"}
+            </CardDescription>
+          </CardHeader>
+          {goalData && (
+            <CardContent>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-700"
+                  style={{ width: `${goalPercent}%` }}
+                />
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      </Link>
+    </FadeIn>
   );
 }
