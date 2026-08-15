@@ -26,10 +26,12 @@ import type { Category, Expense } from "@/lib/types";
 export function ExpenseDialog({
   categories,
   expense,
+  symbol = "€",
   trigger,
 }: {
   categories: Category[];
   expense?: Expense;
+  symbol?: string;
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -68,7 +70,9 @@ export function ExpenseDialog({
         </DialogHeader>
         <form action={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="amount">Importe (€)</Label>
+            <Label htmlFor="amount">
+              {expense?.installment_total ? `Importe de la cuota (${symbol})` : `Importe total (${symbol})`}
+            </Label>
             <Input
               id="amount"
               name="amount"
@@ -112,6 +116,23 @@ export function ExpenseDialog({
               defaultValue={expense?.description ?? ""}
             />
           </div>
+          {!expense && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="installments">Número de cuotas</Label>
+              <Input
+                id="installments"
+                name="installments"
+                type="number"
+                min="1"
+                max="60"
+                defaultValue={1}
+              />
+              <p className="text-xs text-muted-foreground">
+                Deja en 1 para un gasto único. Pon más de 1 si se paga a plazos: el
+                importe total se repartirá automáticamente mes a mes.
+              </p>
+            </div>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="submit" disabled={pending}>

@@ -1,28 +1,28 @@
 import { Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getMonthlyNetSavings } from "@/lib/net-savings";
+import { formatCurrency, getCurrencySymbol } from "@/lib/currency";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { FadeIn, AnimatedCurrency } from "@/components/motion";
 import { IncomeForm } from "./income-form";
 import { DeleteIncomeButton } from "./delete-income-button";
 import { SavingsChart } from "./savings-chart";
-import type { Income } from "@/lib/types";
+import type { Income, UserSettings } from "@/lib/types";
 
-const currency = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 const dateFormat = new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" });
 
 export default async function SavingsPage() {
   const supabase = await createClient();
 
-  const monthly = await getMonthlyNetSavings(supabase, 6);
+  const [monthly, { data: income }, symbol, { data: settings }] = await Promise.all([
+    getMonthlyNetSavings(supabase, 6),
+    supabase.from("income").select("*").order("income_date", { ascending: false }).limit(20),
+    getCurrencySymbol(supabase),
+    supabase.from("user_settings").select("*").maybeSingle(),
+  ]);
   const currentMonth = monthly[monthly.length - 1];
-
-  const { data: income } = await supabase
-    .from("income")
-    .select("*")
-    .order("income_date", { ascending: false })
-    .limit(20);
   const incomeList = (income ?? []) as Income[];
+  const defaultIncome = (settings as UserSettings | null)?.default_monthly_income ?? undefined;
 
   return (
     <FadeIn className="flex flex-col gap-6">
@@ -37,7 +37,7 @@ export default async function SavingsPage() {
             <CardDescription>Ingresos este mes</CardDescription>
           </CardHeader>
           <CardContent>
-            <AnimatedCurrency value={currentMonth.income} className="text-2xl font-semibold text-success" />
+            <AnimatedCurrency value={currentMonth.income} symbol={symbol} className="text-2xl font-semibold text-success" />
           </CardContent>
         </Card>
         <Card>
@@ -45,7 +45,7 @@ export default async function SavingsPage() {
             <CardDescription>Gastos este mes</CardDescription>
           </CardHeader>
           <CardContent>
-            <AnimatedCurrency value={currentMonth.expenses} className="text-2xl font-semibold text-destructive" />
+            <AnimatedCurrency value={currentMonth.expenses} symbol={symbol} className="text-2xl font-semibold text-destructive" />
           </CardContent>
         </Card>
         <Card className="border-primary/30 bg-accent/40">
@@ -53,16 +53,16 @@ export default async function SavingsPage() {
             <CardDescription>Ahorro neto este mes</CardDescription>
           </CardHeader>
           <CardContent>
-            <AnimatedCurrency value={currentMonth.net} className="text-2xl font-semibold" />
+            <AnimatedCurrency value={currentMonth.net} symbol={symbol} className="text-2xl font-semibold" />
           </CardContent>
         </Card>
       </div>
 
-      <SavingsChart data={monthly} />
+      <SavingsChart data={monthly} symbol={symbol} />
 
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-medium">Ingresos</h2>
-        <IncomeForm />
+        <IncomeForm defaultAmount={defaultIncome} />
         <div className="flex flex-col divide-y overflow-hidden rounded-2xl border">
           {incomeList.length === 0 && (
             <p className="p-8 text-center text-sm text-muted-foreground">
@@ -80,7 +80,7 @@ export default async function SavingsPage() {
                   {dateFormat.format(new Date(item.income_date))}
                 </p>
               </div>
-              <span className="font-semibold text-success">+{currency.format(item.amount)}</span>
+              <span className="font-semibold text-success">+{formatCurrency(item.amount, symbol)}</span>
               <DeleteIncomeButton id={item.id} />
             </div>
           ))}

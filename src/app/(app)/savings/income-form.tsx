@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 
 const initialState: IncomeFormState = { error: null };
 
-export function IncomeForm() {
+export function IncomeForm({ defaultAmount }: { defaultAmount?: number }) {
   const [state, formAction, pending] = useActionState(createIncome, initialState);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -21,8 +21,17 @@ export function IncomeForm() {
   return (
     <form ref={formRef} action={formAction} className="flex flex-wrap items-end gap-3">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="amount">Importe (€)</Label>
-        <Input id="amount" name="amount" type="number" step="0.01" min="0.01" required className="w-32" />
+        <Label htmlFor="amount">Importe</Label>
+        <Input
+          id="amount"
+          name="amount"
+          type="number"
+          step="0.01"
+          min="0.01"
+          required
+          defaultValue={defaultAmount}
+          className="w-32"
+        />
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="income_date">Fecha</Label>

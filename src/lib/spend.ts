@@ -1,20 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export function currentMonthRange() {
-  const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth(), 1)
-    .toISOString()
-    .slice(0, 10);
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    .toISOString()
-    .slice(0, 10);
+export function monthRange(monthKey?: string) {
+  const [year, month] = monthKey
+    ? monthKey.split("-").map(Number)
+    : [new Date().getFullYear(), new Date().getMonth() + 1];
+
+  const from = new Date(year, month - 1, 1).toISOString().slice(0, 10);
+  const to = new Date(year, month, 0).toISOString().slice(0, 10);
   return { from, to };
 }
 
-export async function getSpendByCategoryThisMonth(
+export function currentMonthRange() {
+  return monthRange();
+}
+
+export async function getSpendByCategoryForMonth(
   supabase: SupabaseClient,
+  monthKey?: string,
 ): Promise<Map<string, number>> {
-  const { from, to } = currentMonthRange();
+  const { from, to } = monthRange(monthKey);
 
   const { data } = await supabase
     .from("expenses")
@@ -28,4 +32,10 @@ export async function getSpendByCategoryThisMonth(
     spend.set(row.category_id, (spend.get(row.category_id) ?? 0) + Number(row.amount));
   }
   return spend;
+}
+
+export async function getSpendByCategoryThisMonth(
+  supabase: SupabaseClient,
+): Promise<Map<string, number>> {
+  return getSpendByCategoryForMonth(supabase);
 }

@@ -3,12 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { detectSubscriptions } from "@/lib/subscriptions";
 import { Card, CardContent } from "@/components/ui/card";
 import { CategoryIcon } from "@/lib/category-icons";
+import { formatCurrency, getCurrencySymbol } from "@/lib/currency";
 import { RecurringForm } from "./recurring-form";
 import { RecurringRowActions } from "./recurring-row-actions";
 import { AddSuggestedButton } from "./add-suggested-button";
 import type { Category, RecurringExpense } from "@/lib/types";
-
-const currency = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 
 export async function FijosTab() {
   const supabase = await createClient();
@@ -17,7 +16,7 @@ export async function FijosTab() {
   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
   twelveMonthsAgo.setDate(1);
 
-  const [{ data: recurring }, { data: categories }, { data: recentExpenses }] =
+  const [{ data: recurring }, { data: categories }, { data: recentExpenses }, symbol] =
     await Promise.all([
       supabase
         .from("recurring_expenses")
@@ -29,6 +28,7 @@ export async function FijosTab() {
         .select("amount, description, expense_date, category:categories(name, color)")
         .is("recurring_expense_id", null)
         .gte("expense_date", twelveMonthsAgo.toISOString().slice(0, 10)),
+      getCurrencySymbol(supabase),
     ]);
 
   const recurringList = (recurring ?? []) as unknown as (RecurringExpense & {
@@ -52,7 +52,7 @@ export async function FijosTab() {
       <Card>
         <CardContent className="py-4">
           <p className="text-sm text-muted-foreground">Total fijo mensual</p>
-          <p className="text-2xl font-semibold">{currency.format(totalMonthly)}</p>
+          <p className="text-2xl font-semibold">{formatCurrency(totalMonthly, symbol)}</p>
         </CardContent>
       </Card>
 
@@ -73,7 +73,7 @@ export async function FijosTab() {
                 {item.category?.name ?? "Sin categoría"} · Día {item.day_of_month}
               </p>
             </div>
-            <span className="font-semibold">{currency.format(item.amount)}</span>
+            <span className="font-semibold">{formatCurrency(item.amount, symbol)}</span>
             <RecurringRowActions id={item.id} active={item.active} />
           </div>
         ))}
@@ -94,7 +94,7 @@ export async function FijosTab() {
                   <div>
                     <p className="font-medium capitalize">{s.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.occurrences} cargos · ~{currency.format(s.averageAmount)}/mes
+                      {s.occurrences} cargos · ~{formatCurrency(s.averageAmount, symbol)}/mes
                     </p>
                   </div>
                 </div>

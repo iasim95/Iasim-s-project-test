@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { formatCurrency } from "@/lib/currency";
 
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10 },
@@ -13,11 +14,10 @@ const styles = StyleSheet.create({
   total: { marginTop: 12, textAlign: "right", fontSize: 12, fontWeight: 700 },
 });
 
-const currency = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
-
 export function ExpensesPdfDocument({
   rows,
   userEmail,
+  symbol = "€",
 }: {
   rows: {
     expense_date: string;
@@ -26,6 +26,7 @@ export function ExpensesPdfDocument({
     category: { name: string } | null;
   }[];
   userEmail: string;
+  symbol?: string;
 }) {
   const total = rows.reduce((sum, r) => sum + Number(r.amount), 0);
 
@@ -49,11 +50,11 @@ export function ExpensesPdfDocument({
             <Text style={styles.date}>{row.expense_date}</Text>
             <Text style={styles.category}>{row.category?.name ?? "-"}</Text>
             <Text style={styles.description}>{row.description ?? "-"}</Text>
-            <Text style={styles.amount}>{currency.format(row.amount)}</Text>
+            <Text style={styles.amount}>{formatCurrency(row.amount, symbol)}</Text>
           </View>
         ))}
 
-        <Text style={styles.total}>Total: {currency.format(total)}</Text>
+        <Text style={styles.total}>Total: {formatCurrency(total, symbol)}</Text>
       </Page>
     </Document>
   );

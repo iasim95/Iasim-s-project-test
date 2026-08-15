@@ -11,8 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const currency = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
+import { formatCurrency } from "@/lib/currency";
 
 function monthLabel(key: string) {
   const [year, month] = key.split("-").map(Number);
@@ -24,8 +23,10 @@ function monthLabel(key: string) {
 
 export function SavingsChart({
   data,
+  symbol = "€",
 }: {
   data: { month: string; income: number; expenses: number }[];
+  symbol?: string;
 }) {
   const chartData = data.map((d) => ({ ...d, month: monthLabel(d.month) }));
 
@@ -42,10 +43,10 @@ export function SavingsChart({
             <YAxis
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => currency.format(v)}
+              tickFormatter={(v) => formatCurrency(v, symbol)}
               width={80}
             />
-            <Tooltip formatter={(value) => currency.format(Number(value))} />
+            <Tooltip formatter={(value) => formatCurrency(Number(value), symbol)} />
             <Legend />
             <Bar dataKey="income" name="Ingresos" fill="var(--color-success)" radius={4} />
             <Bar dataKey="expenses" name="Gastos" fill="var(--color-destructive)" radius={4} />

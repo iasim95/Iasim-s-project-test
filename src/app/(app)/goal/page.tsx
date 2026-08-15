@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { getNetSavingsSince } from "@/lib/net-savings";
+import { getNetSavingsSince, computeGoalProjection } from "@/lib/net-savings";
+import { getCurrencySymbol } from "@/lib/currency";
 import { FadeIn } from "@/components/motion";
 import { GoalForm } from "./goal-form";
 import { GoalCard } from "./goal-card";
@@ -8,18 +9,30 @@ import type { SavingsGoal } from "@/lib/types";
 export default async function GoalPage() {
   const supabase = await createClient();
 
-  const { data: goal } = await supabase
-    .from("savings_goals")
-    .select("*")
-    .eq("active", true)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [{ data: goal }, symbol] = await Promise.all([
+    supabase
+      .from("savings_goals")
+      .select("*")
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    getCurrencySymbol(supabase),
+  ]);
 
   const goalData = goal as SavingsGoal | null;
   const saved = goalData
     ? await getNetSavingsSince(supabase, goalData.created_at.slice(0, 10))
     : 0;
+
+  const projection = goalData
+    ? computeGoalProjection({
+        saved,
+        targetAmount: goalData.target_amount,
+        createdAt: goalData.created_at,
+        targetDate: goalData.target_date,
+      })
+    : null;
 
   return (
     <FadeIn className="flex flex-col gap-6">
@@ -30,7 +43,11 @@ export default async function GoalPage() {
         </p>
       </div>
 
-      {goalData ? <GoalCard goal={goalData} saved={saved} /> : <GoalForm />}
+      {goalData ? (
+        <GoalCard goal={goalData} saved={saved} symbol={symbol} projection={projection} />
+      ) : (
+        <GoalForm />
+      )}
     </FadeIn>
   );
 }

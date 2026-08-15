@@ -1,18 +1,15 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, Wallet, Receipt } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getSpendByCategoryThisMonth } from "@/lib/spend";
+import { getSpendByCategoryForMonth } from "@/lib/spend";
 import { getMonthlyNetSavings, getNetSavingsSince } from "@/lib/net-savings";
+import { formatCurrency, getCurrencySymbol } from "@/lib/currency";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { FadeIn, AnimatedCurrency } from "@/components/motion";
 import { ProgressRing } from "@/components/progress-ring";
+import { MonthSelector } from "@/components/month-selector";
 import { CategoryPieChart, MonthlyBarChart } from "./expense-charts";
 import type { Budget, Category, Expense, SavingsGoal } from "@/lib/types";
-
-const currency = new Intl.NumberFormat("es-ES", {
-  style: "currency",
-  currency: "EUR",
-});
 
 function monthKey(date: string) {
   return date.slice(0, 7); // YYYY-MM
@@ -26,21 +23,30 @@ function monthLabel(key: string) {
   });
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const selectedMonth = params.month || currentMonth;
+  const [selYear, selMonthNum] = selectedMonth.split("-").map(Number);
+
+  const sixMonthsAgo = new Date(selYear, selMonthNum - 1 - 5, 1);
   const fromDate = sixMonthsAgo.toISOString().slice(0, 10);
+  const toDate = new Date(selYear, selMonthNum, 0).toISOString().slice(0, 10);
 
   const { data: expenses } = await supabase
     .from("expenses")
     .select("id, amount, expense_date, category:categories(id, name, color)")
     .gte("expense_date", fromDate)
+    .lte("expense_date", toDate)
     .order("expense_date", { ascending: true });
 
   const rows = (expenses ?? []) as unknown as (Pick<
@@ -48,12 +54,11 @@ export default async function DashboardPage() {
     "id" | "amount" | "expense_date"
   > & { category: { id: string; name: string; color: string } | null })[];
 
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const thisMonthRows = rows.filter((r) => monthKey(r.expense_date) === currentMonth);
-  const totalThisMonth = thisMonthRows.reduce((sum, r) => sum + Number(r.amount), 0);
+  const selectedMonthRows = rows.filter((r) => monthKey(r.expense_date) === selectedMonth);
+  const totalSelectedMonth = selectedMonthRows.reduce((sum, r) => sum + Number(r.amount), 0);
 
   const byCategory = new Map<string, { name: string; value: number; color: string }>();
-  for (const row of thisMonthRows) {
+  for (const row of selectedMonthRows) {
     const key = row.category?.name ?? "Sin categoría";
     const color = row.category?.color ?? "#94a3b8";
     const existing = byCategory.get(key);
@@ -73,10 +78,10 @@ export default async function DashboardPage() {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, total]) => ({ month: monthLabel(key), total }));
 
-  const [{ data: budgets }, spend, netSavings, { data: goal }] = await Promise.all([
+  const [{ data: budgets }, spend, netSavings, { data: goal }, symbol] = await Promise.all([
     supabase.from("budgets").select("*, category:categories(id, name, color)"),
-    getSpendByCategoryThisMonth(supabase),
-    getMonthlyNetSavings(supabase, 1),
+    getSpendByCategoryForMonth(supabase, selectedMonth),
+    getMonthlyNetSavings(supabase, 1, selectedMonth),
     supabase
       .from("savings_goals")
       .select("*")
@@ -84,6 +89,7 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    getCurrencySymbol(supabase),
   ]);
   const budgetList = (budgets ?? []) as unknown as (Budget & {
     category: Pick<Category, "id" | "name" | "color">;
@@ -91,8 +97,8 @@ export default async function DashboardPage() {
   const overBudget = budgetList.filter(
     (b) => (spend.get(b.category_id) ?? 0) > b.monthly_limit,
   );
-  const incomeThisMonth = netSavings[netSavings.length - 1]?.income ?? 0;
-  const savingsThisMonth = netSavings[netSavings.length - 1]?.net ?? 0;
+  const incomeSelectedMonth = netSavings[netSavings.length - 1]?.income ?? 0;
+  const savingsSelectedMonth = netSavings[netSavings.length - 1]?.net ?? 0;
 
   const goalData = goal as SavingsGoal | null;
   const goalSaved = goalData
@@ -101,8 +107,6 @@ export default async function DashboardPage() {
   const goalPercent = goalData
     ? Math.max(0, Math.min(100, (goalSaved / goalData.target_amount) * 100))
     : 0;
-
-  const monthName = new Date().toLocaleDateString("es-ES", { month: "long", year: "numeric" });
 
   return (
     <FadeIn className="flex flex-col gap-6">
@@ -115,15 +119,14 @@ export default async function DashboardPage() {
           <p className="font-medium">
             Hola{user?.email ? `, ${user.email.split("@")[0]}` : ""}
           </p>
-          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium capitalize backdrop-blur-sm">
-            {monthName}
-          </span>
+          <MonthSelector month={selectedMonth} basePath="/dashboard" />
         </div>
         <p className="relative mt-6 text-sm text-primary-foreground/75 dark:text-white/75">
-          Ahorro neto este mes
+          Ahorro neto
         </p>
         <AnimatedCurrency
-          value={savingsThisMonth}
+          value={savingsSelectedMonth}
+          symbol={symbol}
           className="relative block text-4xl font-semibold tracking-tight"
         />
         {overBudget.length > 0 && (
@@ -143,8 +146,8 @@ export default async function DashboardPage() {
                 <Wallet className="size-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Ingresos este mes</p>
-                <AnimatedCurrency value={incomeThisMonth} className="text-xl font-semibold" />
+                <p className="text-sm text-muted-foreground">Ingresos</p>
+                <AnimatedCurrency value={incomeSelectedMonth} symbol={symbol} className="text-xl font-semibold" />
               </div>
             </CardContent>
           </Card>
@@ -157,8 +160,8 @@ export default async function DashboardPage() {
                 <Receipt className="size-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Gastado este mes</p>
-                <AnimatedCurrency value={totalThisMonth} className="text-xl font-semibold" />
+                <p className="text-sm text-muted-foreground">Gastado</p>
+                <AnimatedCurrency value={totalSelectedMonth} symbol={symbol} className="text-xl font-semibold" />
               </div>
             </CardContent>
           </Card>
@@ -166,8 +169,8 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <CategoryPieChart data={Array.from(byCategory.values())} />
-        <MonthlyBarChart data={monthlyData} />
+        <CategoryPieChart data={Array.from(byCategory.values())} symbol={symbol} />
+        <MonthlyBarChart data={monthlyData} symbol={symbol} />
       </div>
 
       <Link href="/goal">
@@ -179,7 +182,7 @@ export default async function DashboardPage() {
               </CardTitle>
               <CardDescription>
                 {goalData
-                  ? `${currency.format(goalSaved)} de ${currency.format(goalData.target_amount)}`
+                  ? `${formatCurrency(goalSaved, symbol)} de ${formatCurrency(goalData.target_amount, symbol)}`
                   : "Crea uno y sigue tu progreso automáticamente"}
               </CardDescription>
             </div>

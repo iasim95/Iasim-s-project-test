@@ -9,10 +9,12 @@ function monthKey(date: string) {
 export async function getMonthlyNetSavings(
   supabase: SupabaseClient,
   monthsBack = 6,
+  endMonth?: string,
 ): Promise<MonthlyNet[]> {
-  const from = new Date();
-  from.setMonth(from.getMonth() - (monthsBack - 1));
-  from.setDate(1);
+  const end = endMonth
+    ? new Date(Number(endMonth.split("-")[0]), Number(endMonth.split("-")[1]) - 1, 1)
+    : new Date();
+  const from = new Date(end.getFullYear(), end.getMonth() - (monthsBack - 1), 1);
   const fromDate = from.toISOString().slice(0, 10);
 
   const [{ data: income }, { data: expenses }] = await Promise.all([
@@ -40,6 +42,50 @@ export async function getMonthlyNetSavings(
   }
 
   return Array.from(byMonth.values()).sort((a, b) => a.month.localeCompare(b.month));
+}
+
+function monthsBetween(from: Date, to: Date): number {
+  return (
+    (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth())
+  );
+}
+
+export type GoalProjection = {
+  avgMonthly: number;
+  requiredMonthly: number;
+  monthsRemaining: number;
+  onTrack: boolean;
+};
+
+export function computeGoalProjection({
+  saved,
+  targetAmount,
+  createdAt,
+  targetDate,
+}: {
+  saved: number;
+  targetAmount: number;
+  createdAt: string;
+  targetDate: string | null;
+}): GoalProjection | null {
+  if (!targetDate) return null;
+
+  const created = new Date(createdAt);
+  const now = new Date();
+  const target = new Date(targetDate);
+
+  const monthsElapsed = Math.max(1, monthsBetween(created, now));
+  const monthsRemaining = Math.max(0, monthsBetween(now, target));
+  const avgMonthly = saved / monthsElapsed;
+  const remaining = Math.max(0, targetAmount - saved);
+  const requiredMonthly = monthsRemaining > 0 ? remaining / monthsRemaining : remaining;
+
+  return {
+    avgMonthly,
+    requiredMonthly,
+    monthsRemaining,
+    onTrack: avgMonthly >= requiredMonthly,
+  };
 }
 
 export async function getNetSavingsSince(

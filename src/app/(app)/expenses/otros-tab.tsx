@@ -2,12 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/lib/category-icons";
+import { formatCurrency, getCurrencySymbol } from "@/lib/currency";
 import { ExpenseDialog } from "./expense-dialog";
 import { DeleteExpenseButton } from "./delete-expense-button";
 import { ExpenseFilters } from "./expense-filters";
 import type { Category, Expense } from "@/lib/types";
 
-const currency = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 const dateFormat = new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" });
 
 export async function OtrosTab({
@@ -28,9 +28,10 @@ export async function OtrosTab({
   if (filters.from) query = query.gte("expense_date", filters.from);
   if (filters.to) query = query.lte("expense_date", filters.to);
 
-  const [{ data: expenses }, { data: categories }] = await Promise.all([
+  const [{ data: expenses }, { data: categories }, symbol] = await Promise.all([
     query,
     supabase.from("categories").select("*").order("name"),
+    getCurrencySymbol(supabase),
   ]);
 
   const categoryList = (categories ?? []) as Category[];
@@ -43,7 +44,7 @@ export async function OtrosTab({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ExpenseFilters categories={categoryList} filters={filters} />
-        <ExpenseDialog categories={categoryList} trigger={<Button>Añadir gasto</Button>} />
+        <ExpenseDialog categories={categoryList} symbol={symbol} trigger={<Button>Añadir gasto</Button>} />
       </div>
 
       <div className="flex flex-col divide-y overflow-hidden rounded-2xl border">
@@ -73,16 +74,22 @@ export async function OtrosTab({
                     {expense.category.name}
                   </Badge>
                 )}
+                <Badge variant="outline" className="px-1.5 py-0 text-[11px]">
+                  {expense.installment_total
+                    ? `Cuota ${expense.installment_number}/${expense.installment_total}`
+                    : "Único"}
+                </Badge>
                 <span className="text-xs text-muted-foreground">
                   {dateFormat.format(new Date(expense.expense_date))}
                 </span>
               </div>
             </div>
-            <span className="font-semibold">{currency.format(expense.amount)}</span>
+            <span className="font-semibold">{formatCurrency(expense.amount, symbol)}</span>
             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
               <ExpenseDialog
                 categories={categoryList}
                 expense={expense}
+                symbol={symbol}
                 trigger={
                   <Button variant="ghost" size="sm">
                     Editar
@@ -97,7 +104,7 @@ export async function OtrosTab({
 
       {expenseList.length > 0 && (
         <p className="text-right text-sm text-muted-foreground">
-          Total: <span className="font-medium text-foreground">{currency.format(total)}</span>
+          Total: <span className="font-medium text-foreground">{formatCurrency(total, symbol)}</span>
         </p>
       )}
     </div>

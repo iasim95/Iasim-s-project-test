@@ -33,7 +33,7 @@ export function RecurringForm({ categories }: { categories: Category[] }) {
         <Input id="description" name="description" placeholder="Netflix" required className="w-40" />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="amount">Importe (€)</Label>
+        <Label htmlFor="amount">Importe</Label>
         <Input id="amount" name="amount" type="number" step="0.01" min="0.01" required className="w-28" />
       </div>
       <div className="flex flex-col gap-2">

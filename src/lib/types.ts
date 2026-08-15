@@ -15,6 +15,17 @@ export type Expense = {
   expense_date: string;
   created_at: string;
   updated_at: string;
+  recurring_expense_id: string | null;
+  installment_group_id: string | null;
+  installment_number: number | null;
+  installment_total: number | null;
+};
+
+export type UserSettings = {
+  user_id: string;
+  default_monthly_income: number | null;
+  currency_symbol: string;
+  updated_at: string;
 };
 
 export type ExpenseWithCategory = Expense & {

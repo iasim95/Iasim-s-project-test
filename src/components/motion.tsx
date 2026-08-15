@@ -2,6 +2,7 @@
 
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useEffect } from "react";
+import { formatCurrency } from "@/lib/currency";
 
 export function FadeIn({
   children,
@@ -26,15 +27,15 @@ export function FadeIn({
 
 export function AnimatedCurrency({
   value,
+  symbol = "€",
   className,
 }: {
   value: number;
+  symbol?: string;
   className?: string;
 }) {
   const motionValue = useMotionValue(0);
-  const rounded = useTransform(motionValue, (v) =>
-    new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(v),
-  );
+  const rounded = useTransform(motionValue, (v) => formatCurrency(v, symbol));
 
   useEffect(() => {
     const controls = animate(motionValue, value, { duration: 0.8, ease: "easeOut" });

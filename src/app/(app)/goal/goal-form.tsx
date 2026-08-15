@@ -27,7 +27,7 @@ export function GoalForm() {
             <Input id="name" name="name" placeholder="Viaje a Japón" required />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="target_amount">Importe objetivo (€)</Label>
+            <Label htmlFor="target_amount">Importe objetivo</Label>
             <Input id="target_amount" name="target_amount" type="number" step="0.01" min="0.01" required />
           </div>
           <div className="flex flex-col gap-2">

@@ -42,18 +42,45 @@ export async function createExpense(
   const parsed = parseExpenseForm(formData);
   if (!parsed.ok) return { error: parsed.error };
 
+  const installments = Math.max(1, Math.floor(Number(formData.get("installments")) || 1));
+  if (installments > 60) return { error: "Máximo 60 cuotas." };
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  const { error } = await supabase.from("expenses").insert({
-    ...parsed.value,
-    user_id: user.id,
-  });
+  if (installments === 1) {
+    const { error } = await supabase.from("expenses").insert({
+      ...parsed.value,
+      user_id: user.id,
+    });
+    if (error) return { error: error.message };
+  } else {
+    const total = parsed.value.amount;
+    const base = Math.floor((total / installments) * 100) / 100;
+    const groupId = crypto.randomUUID();
+    const startDate = new Date(parsed.value.expense_date);
 
-  if (error) return { error: error.message };
+    const rows = Array.from({ length: installments }, (_, i) => {
+      const isLast = i === installments - 1;
+      const amount = isLast ? Math.round((total - base * (installments - 1)) * 100) / 100 : base;
+      const date = new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate());
+      return {
+        ...parsed.value,
+        amount,
+        expense_date: date.toISOString().slice(0, 10),
+        user_id: user.id,
+        installment_group_id: groupId,
+        installment_number: i + 1,
+        installment_total: installments,
+      };
+    });
+
+    const { error } = await supabase.from("expenses").insert(rows);
+    if (error) return { error: error.message };
+  }
 
   revalidatePath("/expenses");
   revalidatePath("/dashboard");

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrencySymbol } from "@/lib/currency";
 import { ExpensesPdfDocument } from "./expenses-pdf-document";
 
 export const runtime = "nodejs";
@@ -26,8 +27,10 @@ export async function GET() {
     category: { name: string } | null;
   }[];
 
+  const symbol = await getCurrencySymbol(supabase);
+
   const buffer = await renderToBuffer(
-    ExpensesPdfDocument({ rows, userEmail: user.email ?? "" }),
+    ExpensesPdfDocument({ rows, userEmail: user.email ?? "", symbol }),
   );
 
   return new NextResponse(new Uint8Array(buffer), {
