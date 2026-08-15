@@ -28,3 +28,15 @@ export type Budget = {
   monthly_limit: number;
   created_at: string;
 };
+
+export type RecurringExpense = {
+  id: string;
+  user_id: string;
+  category_id: string | null;
+  amount: number;
+  description: string;
+  day_of_month: number;
+  active: boolean;
+  last_generated_month: string | null;
+  created_at: string;
+};

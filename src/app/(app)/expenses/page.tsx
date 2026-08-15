@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { ExpenseDialog } from "./expense-dialog";
 import { DeleteExpenseButton } from "./delete-expense-button";
+import { ExpenseFilters } from "./expense-filters";
 import type { Category, Expense } from "@/lib/types";
 
 const currency = new Intl.NumberFormat("es-ES", {
@@ -19,14 +20,26 @@ const currency = new Intl.NumberFormat("es-ES", {
 });
 const dateFormat = new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" });
 
-export default async function ExpensesPage() {
+export default async function ExpensesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; category?: string; from?: string; to?: string }>;
+}) {
+  const filters = await searchParams;
   const supabase = await createClient();
 
+  let query = supabase
+    .from("expenses")
+    .select("*, category:categories(id, name, color)")
+    .order("expense_date", { ascending: false });
+
+  if (filters.q) query = query.ilike("description", `%${filters.q}%`);
+  if (filters.category) query = query.eq("category_id", filters.category);
+  if (filters.from) query = query.gte("expense_date", filters.from);
+  if (filters.to) query = query.lte("expense_date", filters.to);
+
   const [{ data: expenses }, { data: categories }] = await Promise.all([
-    supabase
-      .from("expenses")
-      .select("*, category:categories(id, name, color)")
-      .order("expense_date", { ascending: false }),
+    query,
     supabase.from("categories").select("*").order("name"),
   ]);
 
@@ -34,6 +47,7 @@ export default async function ExpensesPage() {
   const expenseList = (expenses ?? []) as unknown as (Expense & {
     category: Pick<Category, "id" | "name" | "color"> | null;
   })[];
+  const total = expenseList.reduce((sum, e) => sum + Number(e.amount), 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,6 +58,8 @@ export default async function ExpensesPage() {
           trigger={<Button>Añadir gasto</Button>}
         />
       </div>
+
+      <ExpenseFilters categories={categoryList} filters={filters} />
 
       <div className="rounded-md border">
         <Table>
@@ -60,7 +76,7 @@ export default async function ExpensesPage() {
             {expenseList.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                  No hay gastos todavía. Añade el primero.
+                  No hay gastos que coincidan con el filtro.
                 </TableCell>
               </TableRow>
             )}
@@ -107,6 +123,12 @@ export default async function ExpensesPage() {
           </TableBody>
         </Table>
       </div>
+
+      {expenseList.length > 0 && (
+        <p className="text-right text-sm text-muted-foreground">
+          Total: <span className="font-medium text-foreground">{currency.format(total)}</span>
+        </p>
+      )}
     </div>
   );
 }

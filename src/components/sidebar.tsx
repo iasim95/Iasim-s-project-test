@@ -9,6 +9,8 @@ import {
   Wallet,
   Repeat,
   Download,
+  Upload,
+  CalendarClock,
 } from "lucide-react";
 import { signOut } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
@@ -20,8 +22,10 @@ const links = [
   { href: "/expenses", label: "Gastos", icon: Receipt },
   { href: "/categories", label: "Categorías", icon: Tag },
   { href: "/budgets", label: "Presupuestos", icon: Wallet },
+  { href: "/recurring", label: "Recurrentes", icon: CalendarClock },
   { href: "/subscriptions", label: "Suscripciones", icon: Repeat },
   { href: "/export", label: "Exportar", icon: Download },
+  { href: "/import", label: "Importar", icon: Upload },
 ];
 
 export function Sidebar({ userEmail }: { userEmail?: string }) {
