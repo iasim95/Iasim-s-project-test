@@ -7,7 +7,12 @@ import { getHouseholdId } from "@/lib/household";
 
 export type HouseholdInviteState = { error: string | null; link: string | null };
 
-export async function createHouseholdInvite(): Promise<HouseholdInviteState> {
+export async function createHouseholdInvite(
+  _prevState: HouseholdInviteState,
+  formData: FormData,
+): Promise<HouseholdInviteState> {
+  const email = (formData.get("email") as string)?.trim() || null;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -19,7 +24,7 @@ export async function createHouseholdInvite(): Promise<HouseholdInviteState> {
 
   const { data, error } = await supabase
     .from("household_invites")
-    .insert({ household_id: householdId, created_by: user.id })
+    .insert({ household_id: householdId, created_by: user.id, invited_email: email })
     .select("token")
     .single();
 
