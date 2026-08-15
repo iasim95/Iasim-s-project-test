@@ -1,4 +1,6 @@
+import { AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getSpendByCategoryThisMonth } from "@/lib/spend";
 import {
   Card,
   CardContent,
@@ -6,8 +8,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CategoryPieChart, MonthlyBarChart } from "./expense-charts";
-import type { Expense } from "@/lib/types";
+import type { Budget, Category, Expense } from "@/lib/types";
 
 const currency = new Intl.NumberFormat("es-ES", {
   style: "currency",
@@ -73,6 +76,17 @@ export default async function DashboardPage() {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, total]) => ({ month: monthLabel(key), total }));
 
+  const [{ data: budgets }, spend] = await Promise.all([
+    supabase.from("budgets").select("*, category:categories(id, name, color)"),
+    getSpendByCategoryThisMonth(supabase),
+  ]);
+  const budgetList = (budgets ?? []) as unknown as (Budget & {
+    category: Pick<Category, "id" | "name" | "color">;
+  })[];
+  const overBudget = budgetList.filter(
+    (b) => (spend.get(b.category_id) ?? 0) > b.monthly_limit,
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -81,6 +95,21 @@ export default async function DashboardPage() {
         </h1>
         <p className="text-muted-foreground">Resumen de tus gastos</p>
       </div>
+
+      {overBudget.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="size-4" />
+          <AlertTitle>Presupuesto superado</AlertTitle>
+          <AlertDescription>
+            {overBudget.map((b) => (
+              <div key={b.id}>
+                {b.category.name}: {currency.format(spend.get(b.category_id) ?? 0)} de{" "}
+                {currency.format(b.monthly_limit)}
+              </div>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>

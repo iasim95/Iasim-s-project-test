@@ -20,3 +20,11 @@ export type Expense = {
 export type ExpenseWithCategory = Expense & {
   category: Pick<Category, "id" | "name" | "color"> | null;
 };
+
+export type Budget = {
+  id: string;
+  user_id: string;
+  category_id: string;
+  monthly_limit: number;
+  created_at: string;
+};

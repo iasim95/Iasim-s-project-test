@@ -1,10 +1,18 @@
-import { Nav } from "@/components/nav";
+import { createClient } from "@/lib/supabase/server";
+import { Sidebar } from "@/components/sidebar";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
-    <div className="min-h-screen">
-      <Nav />
-      <main className="mx-auto max-w-5xl p-4">{children}</main>
+    <div className="flex min-h-screen">
+      <Sidebar userEmail={user?.email} />
+      <main className="flex-1 overflow-x-hidden p-6 md:p-8">
+        <div className="mx-auto max-w-4xl">{children}</div>
+      </main>
     </div>
   );
 }
