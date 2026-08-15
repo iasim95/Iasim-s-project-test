@@ -11,6 +11,7 @@ import {
   Dumbbell,
   Gift,
   PawPrint,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,6 +19,7 @@ const KEYWORD_ICONS: [RegExp, LucideIcon][] = [
   [/aliment|comida|super|grocer/i, UtensilsCrossed],
   [/transp|coche|car|gasolina|uber|taxi/i, Car],
   [/vivienda|alquiler|hipoteca|casa|hogar/i, Home],
+  [/servicio|factura|luz|agua|internet|telefon/i, Zap],
   [/ocio|entretenim|cine|juego/i, Popcorn],
   [/salud|medic|farmacia|gym|deporte/i, HeartPulse],
   [/ropa|compra|shopping|tienda/i, ShoppingBag],
