@@ -1,3 +1,4 @@
+import { Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getMonthlyNetSavings } from "@/lib/net-savings";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -62,24 +63,25 @@ export default async function SavingsPage() {
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-medium">Ingresos</h2>
         <IncomeForm />
-        <div className="flex flex-col divide-y rounded-md border">
+        <div className="flex flex-col divide-y overflow-hidden rounded-2xl border">
           {incomeList.length === 0 && (
-            <p className="p-4 text-center text-sm text-muted-foreground">
+            <p className="p-8 text-center text-sm text-muted-foreground">
               Todavía no has añadido ningún ingreso.
             </p>
           )}
           {incomeList.map((item) => (
-            <div key={item.id} className="flex items-center justify-between px-4 py-3">
-              <div>
+            <div key={item.id} className="flex items-center gap-4 px-4 py-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
+                <Wallet className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
                 <p className="font-medium">{item.description || "Ingreso"}</p>
                 <p className="text-sm text-muted-foreground">
                   {dateFormat.format(new Date(item.income_date))}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="font-medium text-success">{currency.format(item.amount)}</span>
-                <DeleteIncomeButton id={item.id} />
-              </div>
+              <span className="font-semibold text-success">+{currency.format(item.amount)}</span>
+              <DeleteIncomeButton id={item.id} />
             </div>
           ))}
         </div>

@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSpendByCategoryThisMonth } from "@/lib/spend";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent } from "@/components/ui/card";
+import { CategoryIcon } from "@/lib/category-icons";
+import { ProgressRing } from "@/components/progress-ring";
 import { BudgetForm } from "./budget-form";
 import { DeleteBudgetButton } from "./delete-budget-button";
 import type { Budget, Category } from "@/lib/types";
@@ -38,7 +39,7 @@ export default async function BudgetsPage() {
 
       {availableCategories.length > 0 && <BudgetForm categories={availableCategories} />}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         {budgetList.map((budget) => {
           const spent = spend.get(budget.category_id) ?? 0;
           const percent = Math.min(100, (spent / budget.monthly_limit) * 100);
@@ -46,24 +47,17 @@ export default async function BudgetsPage() {
 
           return (
             <Card key={budget.id}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <span
-                    className="size-2.5 rounded-full"
-                    style={{ backgroundColor: budget.category.color }}
-                  />
-                  {budget.category.name}
-                </CardTitle>
-                <DeleteBudgetButton id={budget.id} />
-              </CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                <Progress value={percent} className={over ? "[&>div]:bg-destructive" : ""} />
-                <div className="flex justify-between text-sm">
-                  <span className={over ? "font-medium text-destructive" : "text-muted-foreground"}>
+              <CardContent className="flex items-center gap-4 py-2">
+                <CategoryIcon name={budget.category.name} color={budget.category.color} size="lg" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{budget.category.name}</p>
+                  <p className={over ? "text-sm font-medium text-destructive" : "text-sm text-muted-foreground"}>
                     {currency.format(spent)} de {currency.format(budget.monthly_limit)}
-                  </span>
-                  {over && <span className="font-medium text-destructive">¡Superado!</span>}
+                    {over && " · ¡Superado!"}
+                  </p>
                 </div>
+                <ProgressRing percent={percent} color={over ? "var(--color-destructive)" : budget.category.color} />
+                <DeleteBudgetButton id={budget.id} />
               </CardContent>
             </Card>
           );

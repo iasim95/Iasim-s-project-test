@@ -1,17 +1,11 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight, Wallet, Receipt } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSpendByCategoryThisMonth } from "@/lib/spend";
 import { getMonthlyNetSavings, getNetSavingsSince } from "@/lib/net-savings";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { FadeIn, AnimatedCurrency } from "@/components/motion";
+import { ProgressRing } from "@/components/progress-ring";
 import { CategoryPieChart, MonthlyBarChart } from "./expense-charts";
 import type { Budget, Category, Expense, SavingsGoal } from "@/lib/types";
 
@@ -97,6 +91,7 @@ export default async function DashboardPage() {
   const overBudget = budgetList.filter(
     (b) => (spend.get(b.category_id) ?? 0) > b.monthly_limit,
   );
+  const incomeThisMonth = netSavings[netSavings.length - 1]?.income ?? 0;
   const savingsThisMonth = netSavings[netSavings.length - 1]?.net ?? 0;
 
   const goalData = goal as SavingsGoal | null;
@@ -107,56 +102,64 @@ export default async function DashboardPage() {
     ? Math.max(0, Math.min(100, (goalSaved / goalData.target_amount) * 100))
     : 0;
 
+  const monthName = new Date().toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+
   return (
     <FadeIn className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Hola{user?.email ? `, ${user.email.split("@")[0]}` : ""}
-        </h1>
-        <p className="text-muted-foreground">Así va tu mes.</p>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary to-violet-700 p-6 text-primary-foreground shadow-lg dark:text-white">
+        <div
+          className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/10"
+          aria-hidden
+        />
+        <div className="relative flex items-center justify-between">
+          <p className="font-medium">
+            Hola{user?.email ? `, ${user.email.split("@")[0]}` : ""}
+          </p>
+          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium capitalize backdrop-blur-sm">
+            {monthName}
+          </span>
+        </div>
+        <p className="relative mt-6 text-sm text-primary-foreground/75 dark:text-white/75">
+          Ahorro neto este mes
+        </p>
+        <AnimatedCurrency
+          value={savingsThisMonth}
+          className="relative block text-4xl font-semibold tracking-tight"
+        />
+        {overBudget.length > 0 && (
+          <span className="relative mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+            <AlertTriangle className="size-3.5" />
+            {overBudget.length} presupuesto{overBudget.length === 1 ? "" : "s"} superado
+            {overBudget.length === 1 ? "" : "s"}
+          </span>
+        )}
       </div>
 
-      {overBudget.length > 0 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="size-4" />
-          <AlertTitle>Presupuesto superado</AlertTitle>
-          <AlertDescription>
-            {overBudget.map((b) => (
-              <div key={b.id}>
-                {b.category.name}: {currency.format(spend.get(b.category_id) ?? 0)} de{" "}
-                {currency.format(b.monthly_limit)}
-              </div>
-            ))}
-          </AlertDescription>
-        </Alert>
-      )}
-
       <div className="grid gap-4 sm:grid-cols-2">
-        <Link href="/expenses">
+        <Link href="/savings">
           <Card className="h-full transition-shadow hover:shadow-md">
-            <CardHeader>
-              <CardDescription>Gastado este mes</CardDescription>
-              <AnimatedCurrency value={totalThisMonth} className="text-3xl font-semibold" />
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {thisMonthRows.length} movimiento{thisMonthRows.length === 1 ? "" : "s"}{" "}
-                registrado{thisMonthRows.length === 1 ? "" : "s"}
-              </p>
+            <CardContent className="flex items-center gap-4 py-2">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
+                <Wallet className="size-5" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Ingresos este mes</p>
+                <AnimatedCurrency value={incomeThisMonth} className="text-xl font-semibold" />
+              </div>
             </CardContent>
           </Card>
         </Link>
 
-        <Link href="/savings">
-          <Card className="h-full border-primary/30 bg-accent/40 transition-shadow hover:shadow-md">
-            <CardHeader>
-              <CardDescription>Ahorro neto este mes</CardDescription>
-              <AnimatedCurrency value={savingsThisMonth} className="text-3xl font-semibold" />
-            </CardHeader>
-            <CardContent>
-              <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                Ver ingresos y gastos <ArrowRight className="size-3" />
-              </p>
+        <Link href="/expenses">
+          <Card className="h-full transition-shadow hover:shadow-md">
+            <CardContent className="flex items-center gap-4 py-2">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+                <Receipt className="size-5" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Gastado este mes</p>
+                <AnimatedCurrency value={totalThisMonth} className="text-xl font-semibold" />
+              </div>
             </CardContent>
           </Card>
         </Link>
@@ -169,26 +172,23 @@ export default async function DashboardPage() {
 
       <Link href="/goal">
         <Card className="transition-shadow hover:shadow-md">
-          <CardHeader>
-            <CardTitle className="text-base">
-              {goalData ? goalData.name : "Sin objetivo de ahorro todavía"}
-            </CardTitle>
-            <CardDescription>
-              {goalData
-                ? `${currency.format(goalSaved)} de ${currency.format(goalData.target_amount)}`
-                : "Crea uno y sigue tu progreso automáticamente"}
-            </CardDescription>
-          </CardHeader>
-          {goalData && (
-            <CardContent>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all duration-700"
-                  style={{ width: `${goalPercent}%` }}
-                />
-              </div>
-            </CardContent>
-          )}
+          <CardContent className="flex items-center justify-between gap-4 py-2">
+            <div>
+              <CardTitle className="text-base">
+                {goalData ? goalData.name : "Sin objetivo de ahorro todavía"}
+              </CardTitle>
+              <CardDescription>
+                {goalData
+                  ? `${currency.format(goalSaved)} de ${currency.format(goalData.target_amount)}`
+                  : "Crea uno y sigue tu progreso automáticamente"}
+              </CardDescription>
+            </div>
+            {goalData ? (
+              <ProgressRing percent={goalPercent} color="var(--color-primary)" />
+            ) : (
+              <ArrowRight className="size-4 text-muted-foreground" />
+            )}
+          </CardContent>
         </Card>
       </Link>
     </FadeIn>

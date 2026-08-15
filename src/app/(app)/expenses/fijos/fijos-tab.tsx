@@ -1,16 +1,8 @@
 import { Repeat, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { detectSubscriptions } from "@/lib/subscriptions";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { CategoryIcon } from "@/lib/category-icons";
 import { RecurringForm } from "./recurring-form";
 import { RecurringRowActions } from "./recurring-row-actions";
 import { AddSuggestedButton } from "./add-suggested-button";
@@ -66,51 +58,25 @@ export async function FijosTab() {
 
       <RecurringForm categories={categoryList} />
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Descripción</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead>Día</TableHead>
-              <TableHead className="text-right">Importe</TableHead>
-              <TableHead className="w-0" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {recurringList.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                  No tienes gastos fijos configurados.
-                </TableCell>
-              </TableRow>
-            )}
-            {recurringList.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-medium">{item.description}</TableCell>
-                <TableCell>
-                  {item.category ? (
-                    <Badge
-                      variant="outline"
-                      style={{ backgroundColor: `${item.category.color}20`, color: item.category.color }}
-                    >
-                      {item.category.name}
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell>Día {item.day_of_month}</TableCell>
-                <TableCell className="text-right font-medium">
-                  {currency.format(item.amount)}
-                </TableCell>
-                <TableCell>
-                  <RecurringRowActions id={item.id} active={item.active} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="flex flex-col divide-y overflow-hidden rounded-2xl border">
+        {recurringList.length === 0 && (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            No tienes gastos fijos configurados.
+          </p>
+        )}
+        {recurringList.map((item) => (
+          <div key={item.id} className="flex items-center gap-4 px-4 py-3">
+            <CategoryIcon name={item.category?.name ?? "Otros"} color={item.category?.color ?? "#94a3b8"} />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">{item.description}</p>
+              <p className="text-xs text-muted-foreground">
+                {item.category?.name ?? "Sin categoría"} · Día {item.day_of_month}
+              </p>
+            </div>
+            <span className="font-semibold">{currency.format(item.amount)}</span>
+            <RecurringRowActions id={item.id} active={item.active} />
+          </div>
+        ))}
       </div>
 
       {suggestions.length > 0 && (

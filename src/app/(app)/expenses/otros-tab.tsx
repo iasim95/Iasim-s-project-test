@@ -1,14 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CategoryIcon } from "@/lib/category-icons";
 import { ExpenseDialog } from "./expense-dialog";
 import { DeleteExpenseButton } from "./delete-expense-button";
 import { ExpenseFilters } from "./expense-filters";
@@ -48,72 +41,58 @@ export async function OtrosTab({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <ExpenseFilters categories={categoryList} filters={filters} />
         <ExpenseDialog categories={categoryList} trigger={<Button>Añadir gasto</Button>} />
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead>Descripción</TableHead>
-              <TableHead className="text-right">Importe</TableHead>
-              <TableHead className="w-0" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {expenseList.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                  No hay gastos que coincidan con el filtro.
-                </TableCell>
-              </TableRow>
-            )}
-            {expenseList.map((expense) => (
-              <TableRow key={expense.id}>
-                <TableCell>{dateFormat.format(new Date(expense.expense_date))}</TableCell>
-                <TableCell>
-                  {expense.category ? (
-                    <Badge
-                      style={{
-                        backgroundColor: `${expense.category.color}20`,
-                        color: expense.category.color,
-                      }}
-                      variant="outline"
-                    >
-                      {expense.category.name}
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {expense.description || "—"}
-                </TableCell>
-                <TableCell className="text-right font-medium">
-                  {currency.format(expense.amount)}
-                </TableCell>
-                <TableCell>
-                  <div className="flex justify-end gap-1">
-                    <ExpenseDialog
-                      categories={categoryList}
-                      expense={expense}
-                      trigger={
-                        <Button variant="ghost" size="sm">
-                          Editar
-                        </Button>
-                      }
-                    />
-                    <DeleteExpenseButton id={expense.id} />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="flex flex-col divide-y overflow-hidden rounded-2xl border">
+        {expenseList.length === 0 && (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            No hay gastos que coincidan con el filtro.
+          </p>
+        )}
+        {expenseList.map((expense) => (
+          <div
+            key={expense.id}
+            className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent/40"
+          >
+            <CategoryIcon
+              name={expense.category?.name ?? "Otros"}
+              color={expense.category?.color ?? "#94a3b8"}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{expense.description || "Sin descripción"}</p>
+              <div className="mt-0.5 flex items-center gap-2">
+                {expense.category && (
+                  <Badge
+                    variant="outline"
+                    className="px-1.5 py-0 text-[11px]"
+                    style={{ backgroundColor: `${expense.category.color}15`, color: expense.category.color }}
+                  >
+                    {expense.category.name}
+                  </Badge>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  {dateFormat.format(new Date(expense.expense_date))}
+                </span>
+              </div>
+            </div>
+            <span className="font-semibold">{currency.format(expense.amount)}</span>
+            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <ExpenseDialog
+                categories={categoryList}
+                expense={expense}
+                trigger={
+                  <Button variant="ghost" size="sm">
+                    Editar
+                  </Button>
+                }
+              />
+              <DeleteExpenseButton id={expense.id} />
+            </div>
+          </div>
+        ))}
       </div>
 
       {expenseList.length > 0 && (

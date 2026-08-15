@@ -29,6 +29,8 @@ export function CategoryPieChart({
 }: {
   data: { name: string; value: number; color: string }[];
 }) {
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+
   return (
     <Card>
       <CardHeader>
@@ -40,23 +42,32 @@ export function CategoryPieChart({
             Todavía no hay gastos registrados este mes.
           </p>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={2}
-              >
-                {data.map((entry) => (
-                  <Cell key={entry.name} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => currency.format(Number(value))} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="relative">
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={data}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={72}
+                  outerRadius={110}
+                  paddingAngle={4}
+                  cornerRadius={12}
+                  startAngle={90}
+                  endAngle={-270}
+                >
+                  {data.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} stroke="none" />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => currency.format(Number(value))} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-xs text-muted-foreground">Total</span>
+              <span className="text-xl font-semibold">{currency.format(total)}</span>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Badge } from "@/components/ui/badge";
+import { CategoryIcon } from "@/lib/category-icons";
 import type { Category } from "@/lib/types";
 import { NewCategoryForm } from "./new-category-form";
 import { DeleteCategoryButton } from "./delete-category-button";
@@ -23,17 +23,10 @@ export default async function CategoriesPage() {
         {categoryList.map((category) => (
           <div
             key={category.id}
-            className="flex items-center gap-2 rounded-full border py-1 pr-1 pl-3"
+            className="flex items-center gap-2 rounded-full border py-1 pr-2 pl-1.5"
           >
-            <Badge
-              style={{
-                backgroundColor: `${category.color}20`,
-                color: category.color,
-              }}
-              variant="outline"
-            >
-              {category.name}
-            </Badge>
+            <CategoryIcon name={category.name} color={category.color} size="sm" />
+            <span className="text-sm font-medium">{category.name}</span>
             <DeleteCategoryButton id={category.id} />
           </div>
         ))}
