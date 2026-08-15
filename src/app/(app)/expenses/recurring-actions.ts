@@ -38,18 +38,6 @@ export async function createRecurringExpense(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/recurring");
+  revalidatePath("/expenses");
   return { error: null };
-}
-
-export async function toggleRecurringExpense(id: string, active: boolean) {
-  const supabase = await createClient();
-  await supabase.from("recurring_expenses").update({ active }).eq("id", id);
-  revalidatePath("/recurring");
-}
-
-export async function deleteRecurringExpense(id: string) {
-  const supabase = await createClient();
-  await supabase.from("recurring_expenses").delete().eq("id", id);
-  revalidatePath("/recurring");
 }

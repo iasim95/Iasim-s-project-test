@@ -57,7 +57,11 @@ export function BudgetRow({
         </div>
 
         <p className={over ? "text-xs font-medium text-destructive" : "text-xs text-success"}>
-          {limit ? (over ? "¡Superado!" : "Dentro del presupuesto") : " "}
+          {limit
+            ? over
+              ? `Superado — ${formatCurrency(spent - limit, symbol)} por encima del presupuesto`
+              : "Dentro del presupuesto"
+            : " "}
         </p>
 
         <div className="flex items-center gap-2">

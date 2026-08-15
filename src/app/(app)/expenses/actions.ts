@@ -44,6 +44,7 @@ export async function createExpense(
 
   const installments = Math.max(1, Math.floor(Number(formData.get("installments")) || 1));
   if (installments > 60) return { error: "Máximo 60 cuotas." };
+  const repeatMonthly = formData.get("repeat_monthly") === "on";
 
   const supabase = await createClient();
   const {
@@ -51,7 +52,30 @@ export async function createExpense(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  if (installments === 1) {
+  if (repeatMonthly && installments === 1) {
+    const dayOfMonth = new Date(parsed.value.expense_date).getDate();
+    const { data: recurring, error: recurringError } = await supabase
+      .from("recurring_expenses")
+      .insert({
+        user_id: user.id,
+        category_id: parsed.value.category_id,
+        amount: parsed.value.amount,
+        description: parsed.value.description || "Gasto recurrente",
+        day_of_month: dayOfMonth,
+      })
+      .select("id")
+      .single();
+    if (recurringError || !recurring) {
+      return { error: recurringError?.message ?? "No se pudo crear el gasto recurrente." };
+    }
+
+    const { error } = await supabase.from("expenses").insert({
+      ...parsed.value,
+      user_id: user.id,
+      recurring_expense_id: recurring.id,
+    });
+    if (error) return { error: error.message };
+  } else if (installments === 1) {
     const { error } = await supabase.from("expenses").insert({
       ...parsed.value,
       user_id: user.id,
@@ -114,4 +138,14 @@ export async function deleteExpense(id: string) {
 
   revalidatePath("/expenses");
   revalidatePath("/dashboard");
+}
+
+export async function stopRecurring(recurringExpenseId: string) {
+  const supabase = await createClient();
+  await supabase
+    .from("recurring_expenses")
+    .update({ active: false })
+    .eq("id", recurringExpenseId);
+
+  revalidatePath("/expenses");
 }

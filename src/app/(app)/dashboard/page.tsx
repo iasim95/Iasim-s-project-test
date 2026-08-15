@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Wallet, Receipt } from "lucide-react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSpendByCategoryForMonth } from "@/lib/spend";
 import { getMonthlyNetSavings, getNetSavingsSince } from "@/lib/net-savings";
@@ -8,22 +8,8 @@ import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/c
 import { FadeIn, AnimatedCurrency } from "@/components/motion";
 import { ProgressRing } from "@/components/progress-ring";
 import { MonthSelector } from "@/components/month-selector";
-import { AnimatedBlob } from "@/components/animated-blob";
 import { CategoryBarList } from "./category-bar-list";
-import { MonthlyBarChart } from "./expense-charts";
 import type { Budget, Category, Expense, SavingsGoal } from "@/lib/types";
-
-function monthKey(date: string) {
-  return date.slice(0, 7); // YYYY-MM
-}
-
-function monthLabel(key: string) {
-  const [year, month] = key.split("-").map(Number);
-  return new Date(year, month - 1, 1).toLocaleDateString("es-ES", {
-    month: "short",
-    year: "2-digit",
-  });
-}
 
 export default async function DashboardPage({
   searchParams,
@@ -32,35 +18,29 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const currentMonth = new Date().toISOString().slice(0, 7);
   const selectedMonth = params.month || currentMonth;
   const [selYear, selMonthNum] = selectedMonth.split("-").map(Number);
 
-  const sixMonthsAgo = new Date(selYear, selMonthNum - 1 - 5, 1);
-  const fromDate = sixMonthsAgo.toISOString().slice(0, 10);
+  const fromDate = new Date(selYear, selMonthNum - 1, 1).toISOString().slice(0, 10);
   const toDate = new Date(selYear, selMonthNum, 0).toISOString().slice(0, 10);
 
   const { data: expenses } = await supabase
     .from("expenses")
     .select("id, amount, expense_date, category:categories(id, name, color)")
     .gte("expense_date", fromDate)
-    .lte("expense_date", toDate)
-    .order("expense_date", { ascending: true });
+    .lte("expense_date", toDate);
 
   const rows = (expenses ?? []) as unknown as (Pick<
     Expense,
     "id" | "amount" | "expense_date"
   > & { category: { id: string; name: string; color: string } | null })[];
 
-  const selectedMonthRows = rows.filter((r) => monthKey(r.expense_date) === selectedMonth);
-  const totalSelectedMonth = selectedMonthRows.reduce((sum, r) => sum + Number(r.amount), 0);
+  const totalSelectedMonth = rows.reduce((sum, r) => sum + Number(r.amount), 0);
 
   const byCategory = new Map<string, { name: string; value: number; color: string }>();
-  for (const row of selectedMonthRows) {
+  for (const row of rows) {
     const key = row.category?.name ?? "Sin categoría";
     const color = row.category?.color ?? "#94a3b8";
     const existing = byCategory.get(key);
@@ -70,15 +50,6 @@ export default async function DashboardPage({
       byCategory.set(key, { name: key, value: Number(row.amount), color });
     }
   }
-
-  const byMonth = new Map<string, number>();
-  for (const row of rows) {
-    const key = monthKey(row.expense_date);
-    byMonth.set(key, (byMonth.get(key) ?? 0) + Number(row.amount));
-  }
-  const monthlyData = Array.from(byMonth.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, total]) => ({ month: monthLabel(key), total }));
 
   const [{ data: budgets }, spend, netSavings, { data: goal }, symbol] = await Promise.all([
     supabase.from("budgets").select("*, category:categories(id, name, color)"),
@@ -112,68 +83,45 @@ export default async function DashboardPage({
 
   return (
     <FadeIn className="flex flex-col gap-6">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary to-violet-700 p-6 text-primary-foreground shadow-lg dark:text-white">
-        <AnimatedBlob className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/10 blur-xl" />
-        <AnimatedBlob className="pointer-events-none absolute -bottom-20 -left-10 size-40 rounded-full bg-white/5 blur-2xl" />
-        <div className="relative flex items-center justify-between">
-          <p className="font-medium">
-            Hola{user?.email ? `, ${user.email.split("@")[0]}` : ""}
-          </p>
-          <MonthSelector month={selectedMonth} basePath="/dashboard" />
-        </div>
-        <p className="relative mt-6 text-sm text-primary-foreground/75 dark:text-white/75">
-          Ahorro neto
-        </p>
-        <AnimatedCurrency
-          value={savingsSelectedMonth}
-          symbol={symbol}
-          className="relative block text-4xl font-semibold tracking-tight"
-        />
-        {overBudget.length > 0 && (
-          <span className="relative mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">
-            <AlertTriangle className="size-3.5" />
-            {overBudget.length} presupuesto{overBudget.length === 1 ? "" : "s"} superado
-            {overBudget.length === 1 ? "" : "s"}
-          </span>
-        )}
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-muted-foreground">Mes:</span>
+        <MonthSelector month={selectedMonth} basePath="/dashboard" />
       </div>
 
-      <FadeIn delay={0.08} className="grid gap-4 sm:grid-cols-2">
-        <Link href="/savings">
-          <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <CardContent className="flex items-center gap-4 py-2">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
-                <Wallet className="size-5" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ingresos</p>
-                <AnimatedCurrency value={incomeSelectedMonth} symbol={symbol} className="text-xl font-semibold" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+      {overBudget.length > 0 && (
+        <div className="flex items-center gap-2 rounded-xl bg-destructive/10 px-4 py-2.5 text-sm font-medium text-destructive">
+          <AlertTriangle className="size-4" />
+          {overBudget.length} presupuesto{overBudget.length === 1 ? "" : "s"} superado
+          {overBudget.length === 1 ? "" : "s"} este mes
+        </div>
+      )}
 
-        <Link href="/expenses">
-          <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
-            <CardContent className="flex items-center gap-4 py-2">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
-                <Receipt className="size-5" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Gastado</p>
-                <AnimatedCurrency value={totalSelectedMonth} symbol={symbol} className="text-xl font-semibold" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+      <FadeIn delay={0.05} className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="py-2">
+            <p className="text-sm text-muted-foreground">Ingreso del mes</p>
+            <AnimatedCurrency value={incomeSelectedMonth} symbol={symbol} className="text-3xl font-bold" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="py-2">
+            <p className="text-sm text-muted-foreground">Gastos del mes</p>
+            <AnimatedCurrency value={totalSelectedMonth} symbol={symbol} className="text-3xl font-bold" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="py-2">
+            <p className="text-sm text-muted-foreground">Ahorro del mes</p>
+            <AnimatedCurrency value={savingsSelectedMonth} symbol={symbol} className="text-3xl font-bold text-success" />
+          </CardContent>
+        </Card>
       </FadeIn>
 
-      <FadeIn delay={0.16} className="grid gap-6 md:grid-cols-2">
+      <FadeIn delay={0.12}>
         <CategoryBarList data={Array.from(byCategory.values())} symbol={symbol} />
-        <MonthlyBarChart data={monthlyData} symbol={symbol} />
       </FadeIn>
 
-      <FadeIn delay={0.24}>
+      <FadeIn delay={0.18}>
         <Link href="/goal">
           <Card className="transition-all hover:-translate-y-0.5 hover:shadow-md">
             <CardContent className="flex items-center justify-between gap-4 py-2">

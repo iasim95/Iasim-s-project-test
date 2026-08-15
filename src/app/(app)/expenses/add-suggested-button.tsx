@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
-import { createRecurringExpense } from "./actions";
+import { createRecurringExpense } from "./recurring-actions";
 import type { Category } from "@/lib/types";
 
 export function AddSuggestedButton({
