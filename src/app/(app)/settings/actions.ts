@@ -34,15 +34,10 @@ export async function updateGeneralSettings(
   return { error: null };
 }
 
-const DATA_TABLES = [
-  "expenses",
-  "budgets",
-  "recurring_expenses",
-  "income",
-  "savings_goals",
-  "categories",
-  "user_settings",
-] as const;
+// Only strictly personal tables. Expenses/income/recurring_expenses/savings_goals
+// are shared with the household, so one member deleting "all data" must not
+// wipe them out from under a partner who hasn't consented.
+const PERSONAL_DATA_TABLES = ["budgets", "categories", "user_settings"] as const;
 
 export async function deleteAllData() {
   const supabase = await createClient();
@@ -51,7 +46,7 @@ export async function deleteAllData() {
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  for (const table of DATA_TABLES) {
+  for (const table of PERSONAL_DATA_TABLES) {
     await supabase.from(table).delete().eq("user_id", user.id);
   }
 

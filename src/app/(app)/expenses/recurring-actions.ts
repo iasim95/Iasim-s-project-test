@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getHouseholdId } from "@/lib/household";
 
 export type RecurringFormState = { error: string | null };
 
@@ -28,8 +29,12 @@ export async function createRecurringExpense(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
+  const householdId = await getHouseholdId(supabase);
+  if (!householdId) return { error: "No perteneces a ningún hogar." };
+
   const { error } = await supabase.from("recurring_expenses").insert({
     user_id: user.id,
+    household_id: householdId,
     category_id: categoryId,
     amount,
     description,

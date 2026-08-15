@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getHouseholdId } from "@/lib/household";
 
 type BackupCategory = { id: string; name: string; color: string };
 type BackupExpense = {
@@ -49,6 +50,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
+  const householdId = await getHouseholdId(supabase);
+  if (!householdId) {
+    return NextResponse.json({ error: "No perteneces a ningún hogar" }, { status: 400 });
+  }
+
   let backup: Backup;
   try {
     backup = await request.json();
@@ -86,6 +92,7 @@ export async function POST(request: Request) {
       .from("recurring_expenses")
       .insert({
         user_id: user.id,
+        household_id: householdId,
         category_id: rec.category_id ? (categoryIdMap.get(rec.category_id) ?? null) : null,
         amount: rec.amount,
         description: rec.description,
@@ -103,6 +110,7 @@ export async function POST(request: Request) {
   for (const exp of backup.expenses ?? []) {
     const { error } = await supabase.from("expenses").insert({
       user_id: user.id,
+      household_id: householdId,
       category_id: exp.category_id ? (categoryIdMap.get(exp.category_id) ?? null) : null,
       recurring_expense_id: exp.recurring_expense_id
         ? (recurringIdMap.get(exp.recurring_expense_id) ?? null)
@@ -132,6 +140,7 @@ export async function POST(request: Request) {
   for (const inc of backup.income ?? []) {
     const { error } = await supabase.from("income").insert({
       user_id: user.id,
+      household_id: householdId,
       amount: inc.amount,
       description: inc.description,
       income_date: inc.income_date,
@@ -142,6 +151,7 @@ export async function POST(request: Request) {
   for (const goal of backup.savings_goals ?? []) {
     await supabase.from("savings_goals").insert({
       user_id: user.id,
+      household_id: householdId,
       name: goal.name,
       target_amount: goal.target_amount,
       target_date: goal.target_date,

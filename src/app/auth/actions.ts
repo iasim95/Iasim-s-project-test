@@ -31,6 +31,7 @@ export async function signUp(
 ): Promise<AuthState> {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const inviteToken = (formData.get("invite_token") as string) || undefined;
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
@@ -38,6 +39,7 @@ export async function signUp(
     password,
     options: {
       emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirm`,
+      data: inviteToken ? { invite_token: inviteToken } : undefined,
     },
   });
 

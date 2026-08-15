@@ -28,10 +28,12 @@ export function DeleteAllButton() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>¿Borrar todos los datos?</DialogTitle>
+          <DialogTitle>¿Borrar tus datos personales?</DialogTitle>
           <DialogDescription>
-            Se eliminarán todos tus gastos, ingresos, categorías, presupuestos y objetivos.
-            Esta acción no se puede deshacer. Escribe <strong>BORRAR</strong> para confirmar.
+            Se eliminarán tus categorías, presupuestos y ajustes personales. Los gastos,
+            ingresos y objetivos compartidos con tu hogar <strong>no</strong> se tocan, ya que
+            también pertenecen a las demás personas con acceso. Esta acción no se puede
+            deshacer. Escribe <strong>BORRAR</strong> para confirmar.
           </DialogDescription>
         </DialogHeader>
         <Input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="BORRAR" />

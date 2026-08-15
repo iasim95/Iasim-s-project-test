@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getHouseholdId } from "@/lib/household";
 
 export type ExpenseFormState = { error: string | null };
 
@@ -52,12 +53,16 @@ export async function createExpense(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
+  const householdId = await getHouseholdId(supabase);
+  if (!householdId) return { error: "No perteneces a ningún hogar." };
+
   if (repeatMonthly && installments === 1) {
     const dayOfMonth = new Date(parsed.value.expense_date).getDate();
     const { data: recurring, error: recurringError } = await supabase
       .from("recurring_expenses")
       .insert({
         user_id: user.id,
+        household_id: householdId,
         category_id: parsed.value.category_id,
         amount: parsed.value.amount,
         description: parsed.value.description || "Gasto recurrente",
@@ -72,6 +77,7 @@ export async function createExpense(
     const { error } = await supabase.from("expenses").insert({
       ...parsed.value,
       user_id: user.id,
+      household_id: householdId,
       recurring_expense_id: recurring.id,
     });
     if (error) return { error: error.message };
@@ -79,6 +85,7 @@ export async function createExpense(
     const { error } = await supabase.from("expenses").insert({
       ...parsed.value,
       user_id: user.id,
+      household_id: householdId,
     });
     if (error) return { error: error.message };
   } else {
@@ -96,6 +103,7 @@ export async function createExpense(
         amount,
         expense_date: date.toISOString().slice(0, 10),
         user_id: user.id,
+        household_id: householdId,
         installment_group_id: groupId,
         installment_number: i + 1,
         installment_total: installments,

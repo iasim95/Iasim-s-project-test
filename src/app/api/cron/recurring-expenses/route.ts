@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   const { data: due, error } = await supabase
     .from("recurring_expenses")
-    .select("id, user_id, category_id, amount, description, day_of_month")
+    .select("id, user_id, household_id, category_id, amount, description, day_of_month")
     .eq("active", true)
     .or(`last_generated_month.is.null,last_generated_month.neq.${currentMonth}`)
     .lte("day_of_month", today);
@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
 
     const { error: insertError } = await supabase.from("expenses").insert({
       user_id: item.user_id,
+      household_id: item.household_id,
       category_id: item.category_id,
       amount: item.amount,
       description: item.description,

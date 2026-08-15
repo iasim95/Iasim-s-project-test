@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getHouseholdId } from "@/lib/household";
 
 export type IncomeFormState = { error: string | null };
 
@@ -23,8 +24,12 @@ export async function createIncome(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
+  const householdId = await getHouseholdId(supabase);
+  if (!householdId) return { error: "No perteneces a ningún hogar." };
+
   const { error } = await supabase.from("income").insert({
     user_id: user.id,
+    household_id: householdId,
     amount,
     description,
     income_date: incomeDate,

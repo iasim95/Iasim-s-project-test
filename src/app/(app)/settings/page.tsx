@@ -7,6 +7,8 @@ import { FadeIn } from "@/components/motion";
 import { GeneralSettingsForm } from "./general-settings-form";
 import { RestoreForm } from "./restore-form";
 import { DeleteAllButton } from "./delete-all-button";
+import { HouseholdSection } from "./household-section";
+import { getHouseholdMembers } from "./household-actions";
 import type { UserSettings } from "@/lib/types";
 
 const items = [
@@ -38,7 +40,10 @@ const items = [
 
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const { data: settings } = await supabase.from("user_settings").select("*").maybeSingle();
+  const [{ data: settings }, members] = await Promise.all([
+    supabase.from("user_settings").select("*").maybeSingle(),
+    getHouseholdMembers(),
+  ]);
   const userSettings = settings as UserSettings | null;
 
   return (
@@ -47,6 +52,18 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-semibold">Ajustes</h1>
         <p className="text-muted-foreground">Gestión de categorías, presupuestos y datos.</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Compartir con tu pareja</CardTitle>
+          <CardDescription>
+            Comparte tus gastos, ingresos y objetivo de ahorro con otra persona.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <HouseholdSection members={members} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
