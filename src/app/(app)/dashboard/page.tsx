@@ -8,7 +8,9 @@ import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/c
 import { FadeIn, AnimatedCurrency } from "@/components/motion";
 import { ProgressRing } from "@/components/progress-ring";
 import { MonthSelector } from "@/components/month-selector";
-import { CategoryPieChart, MonthlyBarChart } from "./expense-charts";
+import { AnimatedBlob } from "@/components/animated-blob";
+import { CategoryBarList } from "./category-bar-list";
+import { MonthlyBarChart } from "./expense-charts";
 import type { Budget, Category, Expense, SavingsGoal } from "@/lib/types";
 
 function monthKey(date: string) {
@@ -111,10 +113,8 @@ export default async function DashboardPage({
   return (
     <FadeIn className="flex flex-col gap-6">
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary to-violet-700 p-6 text-primary-foreground shadow-lg dark:text-white">
-        <div
-          className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/10"
-          aria-hidden
-        />
+        <AnimatedBlob className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/10 blur-xl" />
+        <AnimatedBlob className="pointer-events-none absolute -bottom-20 -left-10 size-40 rounded-full bg-white/5 blur-2xl" />
         <div className="relative flex items-center justify-between">
           <p className="font-medium">
             Hola{user?.email ? `, ${user.email.split("@")[0]}` : ""}
@@ -138,9 +138,9 @@ export default async function DashboardPage({
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <FadeIn delay={0.08} className="grid gap-4 sm:grid-cols-2">
         <Link href="/savings">
-          <Card className="h-full transition-shadow hover:shadow-md">
+          <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
             <CardContent className="flex items-center gap-4 py-2">
               <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-success/15 text-success">
                 <Wallet className="size-5" />
@@ -154,7 +154,7 @@ export default async function DashboardPage({
         </Link>
 
         <Link href="/expenses">
-          <Card className="h-full transition-shadow hover:shadow-md">
+          <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
             <CardContent className="flex items-center gap-4 py-2">
               <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
                 <Receipt className="size-5" />
@@ -166,34 +166,36 @@ export default async function DashboardPage({
             </CardContent>
           </Card>
         </Link>
-      </div>
+      </FadeIn>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <CategoryPieChart data={Array.from(byCategory.values())} symbol={symbol} />
+      <FadeIn delay={0.16} className="grid gap-6 md:grid-cols-2">
+        <CategoryBarList data={Array.from(byCategory.values())} symbol={symbol} />
         <MonthlyBarChart data={monthlyData} symbol={symbol} />
-      </div>
+      </FadeIn>
 
-      <Link href="/goal">
-        <Card className="transition-shadow hover:shadow-md">
-          <CardContent className="flex items-center justify-between gap-4 py-2">
-            <div>
-              <CardTitle className="text-base">
-                {goalData ? goalData.name : "Sin objetivo de ahorro todavía"}
-              </CardTitle>
-              <CardDescription>
-                {goalData
-                  ? `${formatCurrency(goalSaved, symbol)} de ${formatCurrency(goalData.target_amount, symbol)}`
-                  : "Crea uno y sigue tu progreso automáticamente"}
-              </CardDescription>
-            </div>
-            {goalData ? (
-              <ProgressRing percent={goalPercent} color="var(--color-primary)" />
-            ) : (
-              <ArrowRight className="size-4 text-muted-foreground" />
-            )}
-          </CardContent>
-        </Card>
-      </Link>
+      <FadeIn delay={0.24}>
+        <Link href="/goal">
+          <Card className="transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <CardContent className="flex items-center justify-between gap-4 py-2">
+              <div>
+                <CardTitle className="text-base">
+                  {goalData ? goalData.name : "Sin objetivo de ahorro todavía"}
+                </CardTitle>
+                <CardDescription>
+                  {goalData
+                    ? `${formatCurrency(goalSaved, symbol)} de ${formatCurrency(goalData.target_amount, symbol)}`
+                    : "Crea uno y sigue tu progreso automáticamente"}
+                </CardDescription>
+              </div>
+              {goalData ? (
+                <ProgressRing percent={goalPercent} color="var(--color-primary)" />
+              ) : (
+                <ArrowRight className="size-4 text-muted-foreground" />
+              )}
+            </CardContent>
+          </Card>
+        </Link>
+      </FadeIn>
     </FadeIn>
   );
 }
