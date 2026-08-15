@@ -30,7 +30,7 @@ export async function updateGeneralSettings(
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
-  revalidatePath("/savings");
+  revalidatePath("/goal");
   return { error: null };
 }
 

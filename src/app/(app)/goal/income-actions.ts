@@ -37,7 +37,6 @@ export async function createIncome(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/savings");
   revalidatePath("/goal");
   revalidatePath("/dashboard");
   return { error: null };
@@ -47,7 +46,6 @@ export async function deleteIncome(id: string) {
   const supabase = await createClient();
   await supabase.from("income").delete().eq("id", id);
 
-  revalidatePath("/savings");
   revalidatePath("/goal");
   revalidatePath("/dashboard");
 }

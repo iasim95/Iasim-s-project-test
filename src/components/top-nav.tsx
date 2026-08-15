@@ -6,8 +6,8 @@ import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Receipt,
-  PiggyBank,
-  Target,
+  Wallet,
+  TrendingUp,
   Settings,
 } from "lucide-react";
 import { signOut } from "@/app/auth/actions";
@@ -18,8 +18,8 @@ import { cn } from "@/lib/utils";
 const links = [
   { href: "/dashboard", label: "Resumen", icon: LayoutDashboard },
   { href: "/expenses", label: "Gastos", icon: Receipt },
-  { href: "/savings", label: "Ahorro", icon: PiggyBank },
-  { href: "/goal", label: "Objetivo", icon: Target },
+  { href: "/budgets", label: "Presupuestos", icon: Wallet },
+  { href: "/goal", label: "Meta de ahorro", icon: TrendingUp },
   { href: "/settings", label: "Ajustes", icon: Settings },
 ];
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Tag, Wallet, Download, Upload, ChevronRight } from "lucide-react";
+import { Tag, Download, Upload, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,12 +17,6 @@ const items = [
     icon: Tag,
     title: "Categorías",
     description: "Crea, edita y elimina las categorías de tus gastos.",
-  },
-  {
-    href: "/budgets",
-    icon: Wallet,
-    title: "Presupuestos",
-    description: "Límites mensuales por categoría y alertas si te pasas.",
   },
   {
     href: "/export",

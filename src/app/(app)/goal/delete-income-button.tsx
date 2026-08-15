@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { X } from "lucide-react";
-import { deleteIncome } from "./actions";
+import { deleteIncome } from "./income-actions";
 
 export function DeleteIncomeButton({ id }: { id: string }) {
   const [isPending, startTransition] = useTransition();
