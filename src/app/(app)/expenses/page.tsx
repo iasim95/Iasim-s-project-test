@@ -1,23 +1,17 @@
 import { Repeat, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrencySymbol, formatCurrency } from "@/lib/currency";
-import { getHouseholdMemberLabels } from "@/lib/household";
-import { CategoryIcon } from "@/lib/category-icons";
+import { getHouseholdId, getHouseholdMemberLabels } from "@/lib/household";
 import { detectSubscriptions } from "@/lib/subscriptions";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FadeIn } from "@/components/motion";
 import { MonthSelector } from "@/components/month-selector";
+import { RealtimeRefresh } from "@/components/realtime-refresh";
 import { AddExpenseForm } from "./add-expense-form";
 import { ExpenseFilters } from "./expense-filters";
-import { ExpenseDialog } from "./expense-dialog";
-import { DeleteExpenseButton } from "./delete-expense-button";
-import { StopRecurringButton } from "./stop-recurring-button";
+import { ExpenseList } from "./expense-list";
 import { AddSuggestedButton } from "./add-suggested-button";
 import type { Category, Expense } from "@/lib/types";
-
-const dateFormat = new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" });
 
 function monthLabel(key: string) {
   const [year, month] = key.split("-").map(Number);
@@ -38,14 +32,18 @@ export default async function ExpensesPage({
   const fromDate = new Date(year, monthNum - 1, 1).toISOString().slice(0, 10);
   const toDate = new Date(year, monthNum, 0).toISOString().slice(0, 10);
 
+  const isGlobalSearch = Boolean(params.q);
+
   let query = supabase
     .from("expenses")
     .select("*, category:categories(id, name, color)")
-    .gte("expense_date", fromDate)
-    .lte("expense_date", toDate)
     .order("expense_date", { ascending: false });
 
-  if (params.q) query = query.ilike("description", `%${params.q}%`);
+  if (isGlobalSearch) {
+    query = query.ilike("description", `%${params.q}%`).limit(200);
+  } else {
+    query = query.gte("expense_date", fromDate).lte("expense_date", toDate);
+  }
   if (params.category) query = query.eq("category_id", params.category);
 
   const twelveMonthsAgo = new Date();
@@ -58,7 +56,8 @@ export default async function ExpensesPage({
     symbol,
     { data: recurringTemplates },
     { data: recentExpenses },
-    memberLabels,
+    memberLabelsMap,
+    householdId,
   ] = await Promise.all([
     query,
     supabase.from("categories").select("*").order("name"),
@@ -70,6 +69,7 @@ export default async function ExpensesPage({
       .is("recurring_expense_id", null)
       .gte("expense_date", twelveMonthsAgo.toISOString().slice(0, 10)),
     getHouseholdMemberLabels(supabase),
+    getHouseholdId(supabase),
   ]);
 
   const categoryList = (categories ?? []) as Category[];
@@ -77,6 +77,7 @@ export default async function ExpensesPage({
     category: Pick<Category, "id" | "name" | "color"> | null;
   })[];
   const total = expenseList.reduce((sum, e) => sum + Number(e.amount), 0);
+  const memberLabels = Object.fromEntries(memberLabelsMap);
 
   const existingRecurringDescriptions = new Set(
     (recurringTemplates ?? []).map((r) => r.description.trim().toLowerCase()),
@@ -87,6 +88,8 @@ export default async function ExpensesPage({
 
   return (
     <FadeIn className="flex flex-col gap-6">
+      {householdId && <RealtimeRefresh table="expenses" householdId={householdId} />}
+
       <div className="flex items-center gap-3">
         <span className="text-sm text-muted-foreground">Mes:</span>
         <MonthSelector month={month} basePath="/expenses" />
@@ -98,76 +101,25 @@ export default async function ExpensesPage({
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium capitalize">Gastos de {monthLabel(month)}</h2>
+          <h2 className="text-lg font-medium capitalize">
+            {isGlobalSearch ? `Resultados para "${params.q}"` : `Gastos de ${monthLabel(month)}`}
+          </h2>
           <p className="text-sm text-muted-foreground">
             Total: <span className="font-semibold text-foreground">{formatCurrency(total, symbol)}</span>
           </p>
         </div>
 
-        <div className="flex flex-col divide-y overflow-hidden rounded-2xl border">
-          {expenseList.length === 0 && (
-            <p className="p-8 text-center text-sm text-muted-foreground">
-              No hay gastos que coincidan con el filtro.
-            </p>
-          )}
-          {expenseList.map((expense) => (
-            <div
-              key={expense.id}
-              className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent/40"
-            >
-              <CategoryIcon
-                name={expense.category?.name ?? "Otros"}
-                color={expense.category?.color ?? "#94a3b8"}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{expense.description || "Sin descripción"}</p>
-                <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                  {expense.category && (
-                    <Badge
-                      variant="outline"
-                      className="px-1.5 py-0 text-[11px]"
-                      style={{ backgroundColor: `${expense.category.color}15`, color: expense.category.color }}
-                    >
-                      {expense.category.name}
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="px-1.5 py-0 text-[11px]">
-                    {expense.installment_total
-                      ? `Cuota ${expense.installment_number}/${expense.installment_total}`
-                      : expense.recurring_expense_id
-                        ? "Recurrente"
-                        : "Único"}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {dateFormat.format(new Date(expense.expense_date))}
-                  </span>
-                  {memberLabels.size > 1 && (
-                    <span className="text-xs text-muted-foreground">
-                      · {memberLabels.get(expense.user_id) ?? "Alguien"}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <span className="font-semibold">{formatCurrency(expense.amount, symbol)}</span>
-              <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                {expense.recurring_expense_id && (
-                  <StopRecurringButton recurringExpenseId={expense.recurring_expense_id} />
-                )}
-                <ExpenseDialog
-                  categories={categoryList}
-                  expense={expense}
-                  symbol={symbol}
-                  trigger={
-                    <Button variant="ghost" size="sm">
-                      Editar
-                    </Button>
-                  }
-                />
-                <DeleteExpenseButton id={expense.id} />
-              </div>
-            </div>
-          ))}
-        </div>
+        <ExpenseList
+          expenses={expenseList}
+          categories={categoryList}
+          symbol={symbol}
+          memberLabels={memberLabels}
+          emptyMessage={
+            isGlobalSearch
+              ? "No hay gastos que coincidan con la búsqueda."
+              : "No hay gastos que coincidan con el filtro."
+          }
+        />
       </div>
 
       {suggestions.length > 0 && (

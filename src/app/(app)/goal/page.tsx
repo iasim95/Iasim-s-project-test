@@ -2,8 +2,9 @@ import { Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getNetSavingsSince, computeGoalProjection, getMonthlyNetSavings } from "@/lib/net-savings";
 import { getCurrencySymbol, formatCurrency } from "@/lib/currency";
-import { getHouseholdMemberLabels } from "@/lib/household";
+import { getHouseholdId, getHouseholdMemberLabels } from "@/lib/household";
 import { FadeIn } from "@/components/motion";
+import { RealtimeRefresh } from "@/components/realtime-refresh";
 import { GoalForm } from "./goal-form";
 import { GoalCard } from "./goal-card";
 import { MonthlySavingsList } from "./monthly-savings-list";
@@ -16,7 +17,7 @@ const dateFormat = new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" });
 export default async function GoalPage() {
   const supabase = await createClient();
 
-  const [{ data: goal }, symbol, monthly, { data: income }, { data: settings }, memberLabels] =
+  const [{ data: goal }, symbol, monthly, { data: income }, { data: settings }, memberLabels, householdId] =
     await Promise.all([
       supabase
         .from("savings_goals")
@@ -30,6 +31,7 @@ export default async function GoalPage() {
       supabase.from("income").select("*").order("income_date", { ascending: false }).limit(20),
       supabase.from("user_settings").select("*").maybeSingle(),
       getHouseholdMemberLabels(supabase),
+      getHouseholdId(supabase),
     ]);
 
   const goalData = goal as SavingsGoal | null;
@@ -51,6 +53,12 @@ export default async function GoalPage() {
 
   return (
     <FadeIn className="flex flex-col gap-6">
+      {householdId && (
+        <>
+          <RealtimeRefresh table="income" householdId={householdId} />
+          <RealtimeRefresh table="savings_goals" householdId={householdId} />
+        </>
+      )}
       <div>
         <h1 className="text-2xl font-semibold">Meta de ahorro</h1>
       </div>

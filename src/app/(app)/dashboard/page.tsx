@@ -4,12 +4,22 @@ import { createClient } from "@/lib/supabase/server";
 import { getSpendByCategoryForMonth } from "@/lib/spend";
 import { getMonthlyNetSavings, getNetSavingsSince } from "@/lib/net-savings";
 import { formatCurrency, getCurrencySymbol } from "@/lib/currency";
+import { getHouseholdId } from "@/lib/household";
+import { computeCategoryComparisons, biggestIncrease, biggestDecrease } from "@/lib/category-comparison";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { FadeIn, AnimatedCurrency } from "@/components/motion";
 import { ProgressRing } from "@/components/progress-ring";
 import { MonthSelector } from "@/components/month-selector";
+import { RealtimeRefresh } from "@/components/realtime-refresh";
 import { CategoryBarList } from "./category-bar-list";
+import { ComparisonInsight } from "./comparison-insight";
 import type { Budget, Category, Expense, SavingsGoal } from "@/lib/types";
+
+function shiftMonth(monthKey: string, delta: number) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const d = new Date(year, month - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -21,6 +31,7 @@ export default async function DashboardPage({
 
   const currentMonth = new Date().toISOString().slice(0, 7);
   const selectedMonth = params.month || currentMonth;
+  const previousMonth = shiftMonth(selectedMonth, -1);
   const [selYear, selMonthNum] = selectedMonth.split("-").map(Number);
 
   const fromDate = new Date(selYear, selMonthNum - 1, 1).toISOString().slice(0, 10);
@@ -51,9 +62,20 @@ export default async function DashboardPage({
     }
   }
 
-  const [{ data: budgets }, spend, netSavings, { data: goal }, symbol] = await Promise.all([
+  const [
+    { data: budgets },
+    spend,
+    prevSpend,
+    { data: categories },
+    netSavings,
+    { data: goal },
+    symbol,
+    householdId,
+  ] = await Promise.all([
     supabase.from("budgets").select("*, category:categories(id, name, color)"),
     getSpendByCategoryForMonth(supabase, selectedMonth),
+    getSpendByCategoryForMonth(supabase, previousMonth),
+    supabase.from("categories").select("*"),
     getMonthlyNetSavings(supabase, 1, selectedMonth),
     supabase
       .from("savings_goals")
@@ -63,6 +85,7 @@ export default async function DashboardPage({
       .limit(1)
       .maybeSingle(),
     getCurrencySymbol(supabase),
+    getHouseholdId(supabase),
   ]);
   const budgetList = (budgets ?? []) as unknown as (Budget & {
     category: Pick<Category, "id" | "name" | "color">;
@@ -72,6 +95,10 @@ export default async function DashboardPage({
   );
   const incomeSelectedMonth = netSavings[netSavings.length - 1]?.income ?? 0;
   const savingsSelectedMonth = netSavings[netSavings.length - 1]?.net ?? 0;
+
+  const comparisons = computeCategoryComparisons(spend, prevSpend, (categories ?? []) as Category[]);
+  const increase = biggestIncrease(comparisons);
+  const decrease = biggestDecrease(comparisons);
 
   const goalData = goal as SavingsGoal | null;
   const goalSaved = goalData
@@ -83,6 +110,13 @@ export default async function DashboardPage({
 
   return (
     <FadeIn className="flex flex-col gap-6">
+      {householdId && (
+        <>
+          <RealtimeRefresh table="expenses" householdId={householdId} />
+          <RealtimeRefresh table="income" householdId={householdId} />
+        </>
+      )}
+
       <div className="flex items-center gap-3">
         <span className="text-sm text-muted-foreground">Mes:</span>
         <MonthSelector month={selectedMonth} basePath="/dashboard" />
@@ -115,6 +149,10 @@ export default async function DashboardPage({
             <AnimatedCurrency value={savingsSelectedMonth} symbol={symbol} className="text-3xl font-bold text-success" />
           </CardContent>
         </Card>
+      </FadeIn>
+
+      <FadeIn delay={0.1}>
+        <ComparisonInsight increase={increase} decrease={decrease} />
       </FadeIn>
 
       <FadeIn delay={0.12}>
