@@ -2,6 +2,7 @@ import { Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getNetSavingsSince, computeGoalProjection, getMonthlyNetSavings } from "@/lib/net-savings";
 import { getCurrencySymbol, formatCurrency } from "@/lib/currency";
+import { getHouseholdMemberLabels } from "@/lib/household";
 import { FadeIn } from "@/components/motion";
 import { GoalForm } from "./goal-form";
 import { GoalCard } from "./goal-card";
@@ -15,7 +16,7 @@ const dateFormat = new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" });
 export default async function GoalPage() {
   const supabase = await createClient();
 
-  const [{ data: goal }, symbol, monthly, { data: income }, { data: settings }] =
+  const [{ data: goal }, symbol, monthly, { data: income }, { data: settings }, memberLabels] =
     await Promise.all([
       supabase
         .from("savings_goals")
@@ -28,6 +29,7 @@ export default async function GoalPage() {
       getMonthlyNetSavings(supabase, 6),
       supabase.from("income").select("*").order("income_date", { ascending: false }).limit(20),
       supabase.from("user_settings").select("*").maybeSingle(),
+      getHouseholdMemberLabels(supabase),
     ]);
 
   const goalData = goal as SavingsGoal | null;
@@ -79,6 +81,7 @@ export default async function GoalPage() {
                 <p className="font-medium">{item.description || "Ingreso"}</p>
                 <p className="text-sm text-muted-foreground">
                   {dateFormat.format(new Date(item.income_date))}
+                  {memberLabels.size > 1 && ` · ${memberLabels.get(item.user_id) ?? "Alguien"}`}
                 </p>
               </div>
               <span className="font-semibold text-success">+{formatCurrency(item.amount, symbol)}</span>

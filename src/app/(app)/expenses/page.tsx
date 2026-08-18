@@ -1,6 +1,7 @@
 import { Repeat, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrencySymbol, formatCurrency } from "@/lib/currency";
+import { getHouseholdMemberLabels } from "@/lib/household";
 import { CategoryIcon } from "@/lib/category-icons";
 import { detectSubscriptions } from "@/lib/subscriptions";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +58,7 @@ export default async function ExpensesPage({
     symbol,
     { data: recurringTemplates },
     { data: recentExpenses },
+    memberLabels,
   ] = await Promise.all([
     query,
     supabase.from("categories").select("*").order("name"),
@@ -67,6 +69,7 @@ export default async function ExpensesPage({
       .select("amount, description, expense_date, category:categories(name, color)")
       .is("recurring_expense_id", null)
       .gte("expense_date", twelveMonthsAgo.toISOString().slice(0, 10)),
+    getHouseholdMemberLabels(supabase),
   ]);
 
   const categoryList = (categories ?? []) as Category[];
@@ -138,6 +141,11 @@ export default async function ExpensesPage({
                   <span className="text-xs text-muted-foreground">
                     {dateFormat.format(new Date(expense.expense_date))}
                   </span>
+                  {memberLabels.size > 1 && (
+                    <span className="text-xs text-muted-foreground">
+                      · {memberLabels.get(expense.user_id) ?? "Alguien"}
+                    </span>
+                  )}
                 </div>
               </div>
               <span className="font-semibold">{formatCurrency(expense.amount, symbol)}</span>
