@@ -54,7 +54,7 @@ export function ExpenseFilters({
       <Button type="submit" variant="secondary">
         Filtrar
       </Button>
-      {(filters.q || filters.category) && (
+      {(filters.q || (filters.category && filters.category !== "all")) && (
         <Button asChild variant="ghost">
           <a href={`/expenses?month=${month}`}>Limpiar</a>
         </Button>

@@ -44,7 +44,9 @@ export default async function ExpensesPage({
   } else {
     query = query.gte("expense_date", fromDate).lte("expense_date", toDate);
   }
-  if (params.category) query = query.eq("category_id", params.category);
+  if (params.category && params.category !== "all") {
+    query = query.eq("category_id", params.category);
+  }
 
   const twelveMonthsAgo = new Date();
   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
