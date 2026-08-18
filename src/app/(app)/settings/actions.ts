@@ -12,6 +12,7 @@ export async function updateGeneralSettings(
 ): Promise<SettingsFormState> {
   const defaultIncome = formData.get("default_monthly_income");
   const currencySymbol = (formData.get("currency_symbol") as string)?.trim() || "€";
+  const displayName = (formData.get("display_name") as string)?.trim() || null;
 
   const supabase = await createClient();
   const {
@@ -23,6 +24,7 @@ export async function updateGeneralSettings(
     user_id: user.id,
     default_monthly_income: defaultIncome ? Number(defaultIncome) : null,
     currency_symbol: currencySymbol.slice(0, 3),
+    display_name: displayName,
     updated_at: new Date().toISOString(),
   });
 
@@ -31,6 +33,7 @@ export async function updateGeneralSettings(
   revalidatePath("/settings");
   revalidatePath("/dashboard");
   revalidatePath("/goal");
+  revalidatePath("/expenses");
   return { error: null };
 }
 

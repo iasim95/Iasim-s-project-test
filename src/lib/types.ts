@@ -25,6 +25,7 @@ export type UserSettings = {
   user_id: string;
   default_monthly_income: number | null;
   currency_symbol: string;
+  display_name: string | null;
   updated_at: string;
 };
 

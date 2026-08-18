@@ -12,14 +12,26 @@ const initialState: SettingsFormState = { error: null };
 export function GeneralSettingsForm({
   defaultIncome,
   currencySymbol,
+  displayName,
 }: {
   defaultIncome: number | null;
   currencySymbol: string;
+  displayName: string | null;
 }) {
   const [state, formAction, pending] = useActionState(updateGeneralSettings, initialState);
 
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="display_name">Tu nombre</Label>
+        <Input
+          id="display_name"
+          name="display_name"
+          defaultValue={displayName ?? ""}
+          placeholder="p. ej. Iasim"
+          className="w-32"
+        />
+      </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="default_monthly_income">Ingreso mensual por defecto</Label>
         <Input

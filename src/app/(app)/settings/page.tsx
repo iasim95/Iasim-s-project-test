@@ -61,6 +61,7 @@ export default async function SettingsPage() {
           <GeneralSettingsForm
             defaultIncome={userSettings?.default_monthly_income ?? null}
             currencySymbol={userSettings?.currency_symbol ?? "€"}
+            displayName={userSettings?.display_name ?? null}
           />
         </CardContent>
       </Card>

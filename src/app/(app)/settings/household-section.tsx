@@ -53,8 +53,9 @@ export function HouseholdSection({ members }: { members: HouseholdMember[] }) {
             <div className="flex size-7 items-center justify-center rounded-full bg-accent text-accent-foreground">
               <UserRound className="size-3.5" />
             </div>
-            <span>{m.email}</span>
-            {m.isYou && <span className="text-xs text-muted-foreground">(tú)</span>}
+            <span className="font-medium">{m.name ?? m.email}</span>
+            {m.name && <span className="text-xs text-muted-foreground">({m.email})</span>}
+            {m.isYou && <span className="text-xs text-muted-foreground">· tú</span>}
           </div>
         ))}
       </div>

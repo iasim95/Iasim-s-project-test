@@ -36,7 +36,12 @@ export async function createHouseholdInvite(
   return { error: null, link: `${siteUrl}/invite/${data.token}` };
 }
 
-export type HouseholdMember = { userId: string; email: string; isYou: boolean };
+export type HouseholdMember = {
+  userId: string;
+  email: string;
+  name: string | null;
+  isYou: boolean;
+};
 
 export async function getHouseholdMembers(): Promise<HouseholdMember[]> {
   const supabase = await createClient();
@@ -54,10 +59,14 @@ export async function getHouseholdMembers(): Promise<HouseholdMember[]> {
   const admin = createAdminClient();
   const results: HouseholdMember[] = [];
   for (const m of members) {
-    const { data } = await admin.auth.admin.getUserById(m.user_id);
+    const [{ data }, { data: settings }] = await Promise.all([
+      admin.auth.admin.getUserById(m.user_id),
+      admin.from("user_settings").select("display_name").eq("user_id", m.user_id).maybeSingle(),
+    ]);
     results.push({
       userId: m.user_id,
       email: data.user?.email ?? "—",
+      name: settings?.display_name?.trim() || null,
       isYou: m.user_id === user.id,
     });
   }
