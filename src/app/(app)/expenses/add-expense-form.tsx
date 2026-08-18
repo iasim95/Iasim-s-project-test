@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createExpense } from "./actions";
+import { guessCategoryName } from "@/lib/auto-categorize";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,8 +29,17 @@ export function AddExpenseForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
-  const [categoryKey, setCategoryKey] = useState(0);
   const [amountKey, setAmountKey] = useState(0);
+  const [categoryId, setCategoryId] = useState("");
+  const [categoryTouched, setCategoryTouched] = useState(false);
+
+  function handleDescriptionChange(description: string) {
+    if (categoryTouched) return;
+    const guessed = guessCategoryName(description);
+    if (!guessed) return;
+    const match = categories.find((c) => c.name.toLowerCase() === guessed.toLowerCase());
+    if (match) setCategoryId(match.id);
+  }
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -40,7 +50,8 @@ export function AddExpenseForm({
       }
       setError(null);
       formRef.current?.reset();
-      setCategoryKey((k) => k + 1);
+      setCategoryId("");
+      setCategoryTouched(false);
       setAmountKey((k) => k + 1);
       toast.success("Gasto añadido");
     });
@@ -66,7 +77,14 @@ export function AddExpenseForm({
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="category_id">Categoría</Label>
-              <Select key={categoryKey} name="category_id">
+              <Select
+                name="category_id"
+                value={categoryId}
+                onValueChange={(v) => {
+                  setCategoryId(v);
+                  setCategoryTouched(true);
+                }}
+              >
                 <SelectTrigger id="category_id" className="w-full">
                   <SelectValue placeholder="Sin categoría" />
                 </SelectTrigger>
@@ -83,7 +101,16 @@ export function AddExpenseForm({
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="description">Descripción (opcional)</Label>
-            <Input id="description" name="description" placeholder="Ej: Supermercado, factura luz…" />
+            <Input
+              id="description"
+              name="description"
+              placeholder="Ej: Supermercado, alquiler, factura luz…"
+              onChange={(e) => handleDescriptionChange(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Detectamos la categoría automáticamente a partir de la descripción — puedes
+              cambiarla a mano si no acierta.
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">

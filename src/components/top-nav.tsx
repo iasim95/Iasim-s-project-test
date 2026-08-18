@@ -13,6 +13,7 @@ import {
 import { signOut } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -30,9 +31,7 @@ export function TopNav({ userEmail }: { userEmail?: string }) {
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-8">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-700 text-primary-foreground text-sm font-bold shadow-md shadow-primary/30">
-            €
-          </div>
+          <Logo size={36} className="shrink-0 rounded-xl shadow-md shadow-primary/30" />
           <span className="hidden font-semibold tracking-tight sm:inline">Gastos</span>
         </div>
 
